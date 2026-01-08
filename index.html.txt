@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Painel de Controle - Vivver</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+    <!-- Cabeçalho -->
+    <header class="header">
+        <div class="header-content">
+            <h1 class="header-title">DIRETORIA DE REGULAÇÃO</h1>
+            <h2 class="header-subtitle">CENTRAL DE MARCAÇÃO DE CONSULTAS/DISTRITO SANITÁRIO ELDORADO</h2>
+            <h3 class="header-subsection">CONTROLE DE PENDÊNCIAS/SOLICITAÇÕES/SISTEMA VIVVER</h3>
+            <p class="header-signature">Página Criada por Ana P. A. Silva/Ref. Vivver/Distrito Sanitário Eldorado Matr.201704</p>
+        </div>
+    </header>
+
+    <!-- Container Principal -->
+    <div class="container">
+        <!-- Barra de Ações -->
+        <div class="action-bar">
+            <button class="btn btn-primary" id="btnRefresh" onclick="refreshData()">
+                <i class="fas fa-sync-alt"></i> Atualizar Página
+            </button>
+            <button class="btn btn-secondary" id="btnClearFilters" onclick="clearFilters()">
+                <i class="fas fa-filter-circle-xmark"></i> Limpar Filtros
+            </button>
+            <button class="btn btn-success" id="btnDownload" onclick="downloadExcel()">
+                <i class="fas fa-file-excel"></i> Baixar Excel
+            </button>
+        </div>
+
+        <!-- Filtros -->
+        <div class="filters-section">
+            <div class="filter-group">
+                <label for="filterUnidade">
+                    <i class="fas fa-hospital"></i> Unidade de Saúde
+                </label>
+                <select id="filterUnidade" class="filter-select" onchange="applyFilters()">
+                    <option value="">Todas as Unidades</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filterEspecialidade">
+                    <i class="fas fa-stethoscope"></i> Especialidade
+                </label>
+                <select id="filterEspecialidade" class="filter-select" onchange="applyFilters()">
+                    <option value="">Todas as Especialidades</option>
+                </select>
+            </div>
+            <div class="filter-group">
+                <label for="filterStatus">
+                    <i class="fas fa-list-check"></i> Status
+                </label>
+                <select id="filterStatus" class="filter-select" onchange="applyFilters()">
+                    <option value="">Todos os Status</option>
+                </select>
+            </div>
+        </div>
+
+        <!-- Cards de Resumo -->
+        <div class="cards-container" id="cardsContainer">
+            <div class="card card-total">
+                <div class="card-icon">
+                    <i class="fas fa-clipboard-list"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">Total de Pendências</h3>
+                    <p class="card-value" id="totalPendencias">0</p>
+                    <p class="card-percentage" id="percentTotal">100%</p>
+                </div>
+            </div>
+            <div class="card card-warning">
+                <div class="card-icon">
+                    <i class="fas fa-clock"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">Vencendo em 15 Dias</h3>
+                    <p class="card-value" id="pendencias15">0</p>
+                    <p class="card-percentage" id="percent15">0%</p>
+                </div>
+            </div>
+            <div class="card card-danger">
+                <div class="card-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">Vencendo em 30 Dias</h3>
+                    <p class="card-value" id="pendencias30">0</p>
+                    <p class="card-percentage" id="percent30">0%</p>
+                </div>
+            </div>
+            <div class="card card-info">
+                <div class="card-icon">
+                    <i class="fas fa-filter"></i>
+                </div>
+                <div class="card-content">
+                    <h3 class="card-title">Filtrados</h3>
+                    <p class="card-value" id="totalFiltrados">0</p>
+                    <p class="card-percentage" id="percentFiltrados">100%</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos -->
+        <div class="charts-section">
+            <div class="chart-container">
+                <h3 class="chart-title">
+                    <i class="fas fa-hospital"></i> Pendências por Unidade de Saúde
+                </h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartUnidades"></canvas>
+                </div>
+            </div>
+            <div class="chart-container">
+                <h3 class="chart-title">
+                    <i class="fas fa-stethoscope"></i> Pendências por Especialidade
+                </h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartEspecialidades"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Gráficos de Prazo -->
+        <div class="charts-section">
+            <div class="chart-container">
+                <h3 class="chart-title">
+                    <i class="fas fa-calendar-days"></i> Análise de Prazos - 15 e 30 Dias
+                </h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartPrazos"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tabela de Dados -->
+        <div class="table-section">
+            <h3 class="table-title">
+                <i class="fas fa-table"></i> Detalhamento das Pendências
+            </h3>
+            <div class="table-responsive">
+                <table class="data-table" id="dataTable">
+                    <thead>
+                        <tr>
+                            <th>Nº Solicitação</th>
+                            <th>Data Solicitação</th>
+                            <th>Nº Prontuário</th>
+                            <th>Telefone</th>
+                            <th>Unidade Solicitante</th>
+                            <th>CBO Especialidade</th>
+                            <th>Data Início Pendência</th>
+                            <th>Status</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <tr>
+                            <td colspan="8" class="loading-cell">
+                                <i class="fas fa-spinner fa-spin"></i> Carregando dados...
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="loading-spinner">
+            <i class="fas fa-spinner fa-spin"></i>
+            <p>Carregando dados...</p>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="script.js"></script>
+</body>
+</html>
