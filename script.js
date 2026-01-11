@@ -440,7 +440,6 @@ function updateCards() {
     let pendencias15 = 0;
     let pendencias30 = 0;
 
-    // ✅ Só conta como pendência se "Usuário" estiver preenchido
     filteredData.forEach(item => {
         if (!isPendenciaByUsuario(item)) return;
 
@@ -453,13 +452,11 @@ function updateCards() {
 
         if (dataInicio) {
             const diasDecorridos = Math.floor((hoje - dataInicio) / (1000 * 60 * 60 * 24));
-
             if (diasDecorridos >= 15 && diasDecorridos < 30) pendencias15++;
             if (diasDecorridos >= 30) pendencias30++;
         }
     });
 
-    // Mantive o "Total de Registros" como total geral, igual você já tinha.
     document.getElementById('totalPendencias').textContent = total;
     document.getElementById('pendencias15').textContent = pendencias15;
     document.getElementById('pendencias30').textContent = pendencias30;
@@ -476,7 +473,6 @@ function updateCharts() {
     const unidadesCount = {};
     filteredData.forEach(item => {
         if (!isPendenciaByUsuario(item)) return;
-
         const unidade = item['Unidade Solicitante'] || 'Não informado';
         unidadesCount[unidade] = (unidadesCount[unidade] || 0) + 1;
     });
@@ -492,7 +488,6 @@ function updateCharts() {
     const especialidadesCount = {};
     filteredData.forEach(item => {
         if (!isPendenciaByUsuario(item)) return;
-
         const especialidade = item['Cbo Especialidade'] || 'Não informado';
         especialidadesCount[especialidade] = (especialidadesCount[especialidade] || 0) + 1;
     });
@@ -504,7 +499,7 @@ function updateCharts() {
 
     createHorizontalBarChart('chartEspecialidades', especialidadesLabels, especialidadesValues, '#ef4444');
 
-    // ✅ GRÁFICO DE STATUS (mantido como estava: distribuição geral por Status)
+    // ✅ GRÁFICO DE STATUS (mantido)
     const statusCount = {};
     filteredData.forEach(item => {
         const status = item['Status'] || 'Não informado';
@@ -520,11 +515,10 @@ function updateCharts() {
     // ✅ GRÁFICO DE PIZZA (mantido)
     createPieChart('chartPizzaStatus', statusLabels, statusValues);
 
-    // ✅ NOVO: PENDÊNCIAS POR PRESTADOR (USUÁRIO PREENCHIDO)
+    // ✅ NOVO: PENDÊNCIAS POR PRESTADOR (VERTICAL, USUÁRIO PREENCHIDO)
     const prestadorCount = {};
     filteredData.forEach(item => {
         if (!isPendenciaByUsuario(item)) return;
-
         const prest = item['Prestador'] || 'Não informado';
         prestadorCount[prest] = (prestadorCount[prest] || 0) + 1;
     });
@@ -534,14 +528,14 @@ function updateCharts() {
         .slice(0, 50);
     const prestValues = prestLabels.map(l => prestadorCount[l]);
 
-    createHorizontalBarChartCenteredValue(
+    createVerticalBarChartCenteredValue(
         'chartPendenciasPrestador',
         prestLabels,
         prestValues,
         '#4c1d95' // roxo escuro
     );
 
-    // ✅ NOVO: PENDÊNCIAS POR MÊS (USUÁRIO PREENCHIDO)
+    // ✅ NOVO: PENDÊNCIAS POR MÊS (VERTICAL, USUÁRIO PREENCHIDO)
     const mesCount = {};
     filteredData.forEach(item => {
         if (!isPendenciaByUsuario(item)) return;
@@ -569,7 +563,7 @@ function updateCharts() {
         .slice(0, 50);
     const mesValues = mesLabels.map(l => mesCount[l]);
 
-    createHorizontalBarChartCenteredValue(
+    createVerticalBarChartCenteredValue(
         'chartPendenciasMes',
         mesLabels,
         mesValues,
@@ -578,7 +572,7 @@ function updateCharts() {
 }
 
 // ===================================
-// CRIAR GRÁFICO DE BARRAS HORIZONTAIS (PADRÃO)
+// CRIAR GRÁFICO DE BARRAS HORIZONTAIS
 // ===================================
 function createHorizontalBarChart(canvasId, labels, data, color) {
     const ctx = document.getElementById(canvasId);
@@ -658,9 +652,9 @@ function createHorizontalBarChart(canvasId, labels, data, color) {
 }
 
 // ===================================
-// ✅ NOVO: GRÁFICO HORIZONTAL COM VALOR NO MEIO DA BARRA (BRANCO E NEGRITO)
+// ✅ NOVO: GRÁFICO VERTICAL COM VALOR NO MEIO DA BARRA (BRANCO E NEGRITO)
 // ===================================
-function createHorizontalBarChartCenteredValue(canvasId, labels, data, color) {
+function createVerticalBarChartCenteredValue(canvasId, labels, data, color) {
     const ctx = document.getElementById(canvasId);
 
     if (canvasId === 'chartPendenciasPrestador' && chartPendenciasPrestador) chartPendenciasPrestador.destroy();
@@ -676,12 +670,12 @@ function createHorizontalBarChartCenteredValue(canvasId, labels, data, color) {
                 backgroundColor: color,
                 borderWidth: 0,
                 borderRadius: 6,
-                barPercentage: 0.75,
-                categoryPercentage: 0.85
+                barPercentage: 0.70,
+                categoryPercentage: 0.75,
+                maxBarThickness: 40
             }]
         },
         options: {
-            indexAxis: 'y',
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
@@ -696,19 +690,27 @@ function createHorizontalBarChartCenteredValue(canvasId, labels, data, color) {
                 }
             },
             scales: {
-                x: { display: false, grid: { display: false } },
-                y: {
+                x: {
                     ticks: {
                         font: { size: 12, weight: '600' },
                         color: '#4a5568',
-                        padding: 8
+                        maxRotation: 45,
+                        minRotation: 0
                     },
                     grid: { display: false }
+                },
+                y: {
+                    beginAtZero: true,
+                    ticks: {
+                        font: { size: 12, weight: '600' },
+                        color: '#4a5568'
+                    },
+                    grid: { color: 'rgba(0,0,0,0.06)' }
                 }
             }
         },
         plugins: [{
-            id: 'centerValueInsideHorizontalBar',
+            id: 'centerValueInsideVerticalBar',
             afterDatasetsDraw(chart) {
                 const { ctx } = chart;
                 const meta = chart.getDatasetMeta(0);
@@ -722,10 +724,8 @@ function createHorizontalBarChartCenteredValue(canvasId, labels, data, color) {
 
                 meta.data.forEach((bar, i) => {
                     const value = dataset.data[i];
-
-                    const centerX = (bar.base + bar.x) / 2;
-                    const centerY = bar.y;
-
+                    const centerX = bar.x;
+                    const centerY = bar.y + (bar.height / 2);
                     ctx.fillText(String(value), centerX, centerY);
                 });
 
