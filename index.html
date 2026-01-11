@@ -147,6 +147,14 @@
                         <div class="multi-select-panel" id="msPrestadorPanel"></div>
                     </div>
                 </div>
+
+                <!-- ✅ NOVO FILTRO POR MÊS -->
+                <div class="filter-box">
+                    <label>Filtrar por Mês:</label>
+                    <select class="filter-select" id="filterMes" onchange="applyFilters()">
+                        <option value="">Todos os Meses</option>
+                    </select>
+                </div>
             </div>
 
             <button class="btn btn-clear" onclick="clearFilters()">
