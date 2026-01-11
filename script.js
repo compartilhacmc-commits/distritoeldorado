@@ -435,7 +435,7 @@ function updateCharts() {
 
     createHorizontalBarChart('chartEspecialidades', especialidadesLabels, especialidadesValues, '#ef4444');
 
-    // Gráfico de Status (VERTICAL LARANJA)
+    // ✅ GRÁFICO DE STATUS (VERTICAL LARANJA COM VALORES DENTRO DAS BARRAS)
     const statusCount = {};
     filteredData.forEach(item => {
         const status = item['Status'] || 'Não informado';
@@ -448,7 +448,7 @@ function updateCharts() {
 
     createVerticalBarChart('chartStatus', statusLabels, statusValues, '#f97316');
 
-    // Gráfico de Pizza por Status
+    // ✅ GRÁFICO DE PIZZA COM LEGENDA PRETA E NEGRITO
     createPieChart('chartPizzaStatus', statusLabels, statusValues);
 }
 
@@ -533,7 +533,7 @@ function createHorizontalBarChart(canvasId, labels, data, color) {
 }
 
 // ===================================
-// CRIAR GRÁFICO DE BARRAS VERTICAIS (STATUS)
+// ✅ CRIAR GRÁFICO DE BARRAS VERTICAIS (STATUS) COM VALORES NO MEIO DAS BARRAS
 // ===================================
 function createVerticalBarChart(canvasId, labels, data, color) {
     const ctx = document.getElementById(canvasId);
@@ -590,21 +590,23 @@ function createVerticalBarChart(canvasId, labels, data, color) {
             }
         },
         plugins: [{
-            id: 'statusValueLabels',
+            id: 'statusValueLabelsInsideBar',
             afterDatasetsDraw(chart) {
                 const { ctx } = chart;
                 const meta = chart.getDatasetMeta(0);
                 const dataset = chart.data.datasets[0];
 
                 ctx.save();
-                ctx.fillStyle = '#000000';
-                ctx.font = 'bold 14px Arial';
+                ctx.fillStyle = '#FFFFFF'; // ✅ BRANCO
+                ctx.font = 'bold 16px Arial'; // ✅ NEGRITO
                 ctx.textAlign = 'center';
-                ctx.textBaseline = 'bottom';
+                ctx.textBaseline = 'middle';
 
                 meta.data.forEach((bar, i) => {
                     const value = dataset.data[i];
-                    ctx.fillText(String(value), bar.x, bar.y - 6);
+                    // ✅ POSICIONA NO MEIO DA BARRA (bar.y + altura/2)
+                    const yPos = bar.y + (bar.height / 2);
+                    ctx.fillText(String(value), bar.x, yPos);
                 });
 
                 ctx.restore();
@@ -616,7 +618,7 @@ function createVerticalBarChart(canvasId, labels, data, color) {
 }
 
 // ===================================
-// CRIAR GRÁFICO DE PIZZA
+// ✅ CRIAR GRÁFICO DE PIZZA COM LEGENDA PRETA E NEGRITO
 // ===================================
 function createPieChart(canvasId, labels, data) {
     const ctx = document.getElementById(canvasId);
@@ -649,8 +651,11 @@ function createPieChart(canvasId, labels, data) {
                 legend: {
                     position: 'right',
                     labels: {
-                        font: { size: 13, weight: '600' },
-                        color: '#1f2937',
+                        font: { 
+                            size: 14, // ✅ AUMENTADO
+                            weight: 'bold' // ✅ NEGRITO
+                        },
+                        color: '#000000', // ✅ PRETO
                         padding: 15,
                         usePointStyle: true,
                         pointStyle: 'circle',
@@ -712,7 +717,7 @@ function createPieChart(canvasId, labels, data) {
 }
 
 // ===================================
-// ATUALIZAR TABELA
+// ✅ ATUALIZAR TABELA (CORRIGIDO PARA MOSTRAR "Solicitação")
 // ===================================
 function updateTable() {
     const tbody = document.getElementById('tableBody');
@@ -730,9 +735,14 @@ function updateTable() {
 
         const origem = item['_origem'] || '-';
 
+        // ✅ CORRIGIDO: Busca por várias variações possíveis da coluna "Solicitação"
         const solicitacao = getColumnValue(item, [
             'Solicitação',
-            'Solicitacao'
+            'Solicitacao',
+            'N° Solicitação',
+            'Nº Solicitação',
+            'Numero Solicitação',
+            'Numero Solicitacao'
         ]);
 
         const dataSolicitacao = getColumnValue(item, [
@@ -854,7 +864,7 @@ function downloadExcel() {
 
     const exportData = filteredData.map(item => ({
         'Origem': item['_origem'] || '',
-        'Solicitação': getColumnValue(item, ['Solicitação', 'Solicitacao'], ''),
+        'Solicitação': getColumnValue(item, ['Solicitação', 'Solicitacao', 'N° Solicitação', 'Nº Solicitação'], ''),
         'Data Solicitação': getColumnValue(item, ['Data da Solicitação', 'Data Solicitação', 'Data da Solicitacao', 'Data Solicitacao'], ''),
         'Nº Prontuário': getColumnValue(item, ['Nº Prontuário', 'N° Prontuário', 'Numero Prontuário', 'Prontuário', 'Prontuario'], ''),
         'Telefone': item['Telefone'] || '',
