@@ -471,6 +471,16 @@ body {
     white-space: nowrap;
 }
 
+/* ✅ DESTAQUE AMARELO PARA LINHAS VENCENDO EM 15 DIAS */
+.data-table tbody tr.row-vencendo-15 {
+    background-color: #fef3c7 !important;
+    font-weight: 600;
+}
+
+.data-table tbody tr.row-vencendo-15:hover {
+    background-color: #fde68a !important;
+}
+
 .loading-message {
     text-align: center;
     padding: 3rem !important;
