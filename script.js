@@ -1,9 +1,19 @@
 // ===================================
-// CONFIGURAÇÃO DA PLANILHA
+// CONFIGURAÇÃO DA PLANILHA (DUAS ABAS)
 // ===================================
 const SHEET_ID = '1r6NLcVkVLD5vp4UxPEa7TcreBpOd0qeNt-QREOG4Xr4';
-const SHEET_NAME = 'PENDÊNCIAS ELDORADO';
-const SHEET_URL = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
+
+// ✅ CONFIGURAÇÃO DAS DUAS ABAS
+const SHEETS = [
+    {
+        name: 'PENDÊNCIAS ELDORADO',
+        url: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('PENDÊNCIAS ELDORADO')}`
+    },
+    {
+        name: 'RESOLVIDOS',
+        url: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('RESOLVIDOS')}`
+    }
+];
 
 // ===================================
 // VARIÁVEIS GLOBAIS
@@ -108,44 +118,64 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ===================================
-// CARREGAR DADOS DA PLANILHA
+// ✅ CARREGAR DADOS DAS DUAS ABAS
 // ===================================
 async function loadData() {
     showLoading(true);
+    allData = [];
+    
     try {
-        console.log('Fazendo requisição para:', SHEET_URL);
+        console.log('Carregando dados das duas abas...');
 
-        const response = await fetch(SHEET_URL);
+        // ✅ CARREGAR AS DUAS ABAS EM PARALELO
+        const promises = SHEETS.map(sheet => 
+            fetch(sheet.url)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Erro HTTP na aba "${sheet.name}": ${response.status}`);
+                    }
+                    return response.text();
+                })
+                .then(csvText => {
+                    console.log(`Dados CSV da aba "${sheet.name}" recebidos`);
+                    return { name: sheet.name, csv: csvText };
+                })
+        );
 
-        if (!response.ok) {
-            throw new Error(`Erro HTTP: ${response.status}`);
-        }
+        const results = await Promise.all(promises);
 
-        const csvText = await response.text();
-        console.log('Dados CSV recebidos, primeiros 500 caracteres:', csvText.substring(0, 500));
+        // ✅ PROCESSAR CADA ABA
+        results.forEach(result => {
+            const rows = parseCSV(result.csv);
 
-        const rows = parseCSV(csvText);
+            if (rows.length < 2) {
+                console.warn(`Aba "${result.name}" está vazia ou sem dados`);
+                return;
+            }
 
-        if (rows.length < 2) {
-            throw new Error('Planilha vazia ou sem dados');
-        }
+            const headers = rows[0];
+            console.log(`Cabeçalhos da aba "${result.name}":`, headers);
 
-        const headers = rows[0];
-        console.log('Cabeçalhos encontrados:', headers);
-
-        allData = rows.slice(1)
-            .filter(row => row.length > 1 && row[0])
-            .map(row => {
-                const obj = {};
-                headers.forEach((header, index) => {
-                    obj[header.trim()] = (row[index] || '').trim();
+            const sheetData = rows.slice(1)
+                .filter(row => row.length > 1 && row[0])
+                .map(row => {
+                    const obj = { _origem: result.name }; // ✅ Marca a origem dos dados
+                    headers.forEach((header, index) => {
+                        obj[header.trim()] = (row[index] || '').trim();
+                    });
+                    return obj;
                 });
-                return obj;
-            });
 
-        console.log(`Total de registros carregados: ${allData.length}`);
+            console.log(`${sheetData.length} registros carregados da aba "${result.name}"`);
+            allData.push(...sheetData);
+        });
+
+        console.log(`Total de registros carregados (ambas as abas): ${allData.length}`);
         console.log('Primeiro registro completo:', allData[0]);
-        console.log('Todas as chaves do primeiro registro:', Object.keys(allData[0]));
+
+        if (allData.length === 0) {
+            throw new Error('Nenhum dado foi carregado das planilhas');
+        }
 
         filteredData = [...allData];
 
@@ -156,7 +186,7 @@ async function loadData() {
 
     } catch (error) {
         console.error('Erro ao carregar dados:', error);
-        alert(`Erro ao carregar dados da planilha: ${error.message}\n\nVerifique:\n1. A planilha está pública?\n2. O nome da aba está correto: "${SHEET_NAME}"?\n3. Há dados na planilha?`);
+        alert(`Erro ao carregar dados da planilha: ${error.message}\n\nVerifique:\n1. As planilhas estão públicas?\n2. Os nomes das abas estão corretos?\n3. Há dados nas planilhas?`);
     } finally {
         showLoading(false);
     }
@@ -221,6 +251,10 @@ function showLoading(show) {
 // POPULAR FILTROS (MULTISELECT)
 // ===================================
 function populateFilters() {
+    // ✅ FILTRO DE ORIGEM
+    const origens = [...new Set(allData.map(item => item['_origem']))].filter(Boolean).sort();
+    renderMultiSelect('msOrigemPanel', origens, applyFilters);
+
     const statusList = [...new Set(allData.map(item => item['Status']))].filter(Boolean).sort();
     renderMultiSelect('msStatusPanel', statusList, applyFilters);
 
@@ -233,6 +267,7 @@ function populateFilters() {
     const prestadores = [...new Set(allData.map(item => item['Prestador']))].filter(Boolean).sort();
     renderMultiSelect('msPrestadorPanel', prestadores, applyFilters);
 
+    setMultiSelectText('msOrigemText', [], 'Todas');
     setMultiSelectText('msStatusText', [], 'Todos');
     setMultiSelectText('msUnidadeText', [], 'Todas');
     setMultiSelectText('msEspecialidadeText', [], 'Todas');
@@ -243,22 +278,25 @@ function populateFilters() {
 // APLICAR FILTROS (MULTISELECT)
 // ===================================
 function applyFilters() {
+    const origemSel = getSelectedFromPanel('msOrigemPanel');
     const statusSel = getSelectedFromPanel('msStatusPanel');
     const unidadeSel = getSelectedFromPanel('msUnidadePanel');
     const especialidadeSel = getSelectedFromPanel('msEspecialidadePanel');
     const prestadorSel = getSelectedFromPanel('msPrestadorPanel');
 
+    setMultiSelectText('msOrigemText', origemSel, 'Todas');
     setMultiSelectText('msStatusText', statusSel, 'Todos');
     setMultiSelectText('msUnidadeText', unidadeSel, 'Todas');
     setMultiSelectText('msEspecialidadeText', especialidadeSel, 'Todas');
     setMultiSelectText('msPrestadorText', prestadorSel, 'Todos');
 
     filteredData = allData.filter(item => {
+        const okOrigem = (origemSel.length === 0) || origemSel.includes(item['_origem'] || '');
         const okStatus = (statusSel.length === 0) || statusSel.includes(item['Status'] || '');
         const okUnidade = (unidadeSel.length === 0) || unidadeSel.includes(item['Unidade Solicitante'] || '');
         const okEsp = (especialidadeSel.length === 0) || especialidadeSel.includes(item['Cbo Especialidade'] || '');
         const okPrest = (prestadorSel.length === 0) || prestadorSel.includes(item['Prestador'] || '');
-        return okStatus && okUnidade && okEsp && okPrest;
+        return okOrigem && okStatus && okUnidade && okEsp && okPrest;
     });
 
     updateDashboard();
@@ -268,12 +306,13 @@ function applyFilters() {
 // LIMPAR FILTROS (MULTISELECT)
 // ===================================
 function clearFilters() {
-    ['msStatusPanel','msUnidadePanel','msEspecialidadePanel','msPrestadorPanel'].forEach(panelId => {
+    ['msOrigemPanel','msStatusPanel','msUnidadePanel','msEspecialidadePanel','msPrestadorPanel'].forEach(panelId => {
         const panel = document.getElementById(panelId);
         if (!panel) return;
         panel.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
     });
 
+    setMultiSelectText('msOrigemText', [], 'Todas');
     setMultiSelectText('msStatusText', [], 'Todos');
     setMultiSelectText('msUnidadeText', [], 'Todas');
     setMultiSelectText('msEspecialidadeText', [], 'Todas');
@@ -362,10 +401,9 @@ function updateCards() {
 // ATUALIZAR GRÁFICOS
 // ===================================
 function updateCharts() {
-    // ✅ CORREÇÃO: Gráfico de Unidades (SOMENTE COM STATUS PREENCHIDO)
+    // ✅ Gráfico de Unidades (SOMENTE COM STATUS PREENCHIDO)
     const unidadesCount = {};
     filteredData.forEach(item => {
-        // ✅ SÓ CONTA SE STATUS ESTIVER PREENCHIDO
         const status = item['Status'];
         if (status && status.trim() !== '') {
             const unidade = item['Unidade Solicitante'] || 'Não informado';
@@ -380,10 +418,9 @@ function updateCharts() {
 
     createHorizontalBarChart('chartUnidades', unidadesLabels, unidadesValues, '#48bb78');
 
-    // ✅ CORREÇÃO: Gráfico de Especialidades (SOMENTE COM STATUS PREENCHIDO)
+    // ✅ Gráfico de Especialidades (SOMENTE COM STATUS PREENCHIDO)
     const especialidadesCount = {};
     filteredData.forEach(item => {
-        // ✅ SÓ CONTA SE STATUS ESTIVER PREENCHIDO
         const status = item['Status'];
         if (status && status.trim() !== '') {
             const especialidade = item['Cbo Especialidade'] || 'Não informado';
@@ -398,7 +435,7 @@ function updateCharts() {
 
     createHorizontalBarChart('chartEspecialidades', especialidadesLabels, especialidadesValues, '#ef4444');
 
-    // Gráfico de Status (VERTICAL LARANJA) - mantido sem alteração
+    // Gráfico de Status (VERTICAL LARANJA)
     const statusCount = {};
     filteredData.forEach(item => {
         const status = item['Status'] || 'Não informado';
@@ -411,7 +448,7 @@ function updateCharts() {
 
     createVerticalBarChart('chartStatus', statusLabels, statusValues, '#f97316');
 
-    // Gráfico de Pizza por Status - mantido sem alteração
+    // Gráfico de Pizza por Status
     createPieChart('chartPizzaStatus', statusLabels, statusValues);
 }
 
@@ -423,7 +460,6 @@ function createHorizontalBarChart(canvasId, labels, data, color) {
 
     if (canvasId === 'chartUnidades' && chartUnidades) chartUnidades.destroy();
     if (canvasId === 'chartEspecialidades' && chartEspecialidades) chartEspecialidades.destroy();
-    if (canvasId === 'chartStatus' && chartStatus) chartStatus.destroy();
 
     const chart = new Chart(ctx, {
         type: 'bar',
@@ -435,7 +471,6 @@ function createHorizontalBarChart(canvasId, labels, data, color) {
                 backgroundColor: color,
                 borderWidth: 0,
                 borderRadius: 4,
-                // ✅ CORREÇÃO: BARRAS MAIS LARGAS
                 barPercentage: 0.75,
                 categoryPercentage: 0.85
             }]
@@ -495,18 +530,15 @@ function createHorizontalBarChart(canvasId, labels, data, color) {
 
     if (canvasId === 'chartUnidades') chartUnidades = chart;
     if (canvasId === 'chartEspecialidades') chartEspecialidades = chart;
-    if (canvasId === 'chartStatus') chartStatus = chart;
 }
 
 // ===================================
-// CRIAR GRÁFICO DE BARRAS VERTICAIS (STATUS) - COM VALOR FORA DA BARRA
+// CRIAR GRÁFICO DE BARRAS VERTICAIS (STATUS)
 // ===================================
 function createVerticalBarChart(canvasId, labels, data, color) {
     const ctx = document.getElementById(canvasId);
 
-    if (canvasId === 'chartStatus' && chartStatus) {
-        chartStatus.destroy();
-    }
+    if (chartStatus) chartStatus.destroy();
 
     const chart = new Chart(ctx, {
         type: 'bar',
@@ -589,9 +621,7 @@ function createVerticalBarChart(canvasId, labels, data, color) {
 function createPieChart(canvasId, labels, data) {
     const ctx = document.getElementById(canvasId);
 
-    if (chartPizzaStatus) {
-        chartPizzaStatus.destroy();
-    }
+    if (chartPizzaStatus) chartPizzaStatus.destroy();
 
     const colors = [
         '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
@@ -682,7 +712,7 @@ function createPieChart(canvasId, labels, data) {
 }
 
 // ===================================
-// ATUALIZAR TABELA (COM COLUNA Solicitação)
+// ATUALIZAR TABELA
 // ===================================
 function updateTable() {
     const tbody = document.getElementById('tableBody');
@@ -690,13 +720,15 @@ function updateTable() {
     tbody.innerHTML = '';
 
     if (filteredData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" class="loading-message"><i class="fas fa-inbox"></i> Nenhum registro encontrado</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="13" class="loading-message"><i class="fas fa-inbox"></i> Nenhum registro encontrado</td></tr>';
         footer.textContent = 'Mostrando 0 registros';
         return;
     }
 
     filteredData.forEach(item => {
         const row = document.createElement('tr');
+
+        const origem = item['_origem'] || '-';
 
         const solicitacao = getColumnValue(item, [
             'Solicitação',
@@ -754,6 +786,7 @@ function updateTable() {
         ]);
 
         row.innerHTML = `
+            <td>${origem}</td>
             <td>${solicitacao}</td>
             <td>${formatDate(dataSolicitacao)}</td>
             <td>${prontuario}</td>
@@ -820,6 +853,7 @@ function downloadExcel() {
     }
 
     const exportData = filteredData.map(item => ({
+        'Origem': item['_origem'] || '',
         'Solicitação': getColumnValue(item, ['Solicitação', 'Solicitacao'], ''),
         'Data Solicitação': getColumnValue(item, ['Data da Solicitação', 'Data Solicitação', 'Data da Solicitacao', 'Data Solicitacao'], ''),
         'Nº Prontuário': getColumnValue(item, ['Nº Prontuário', 'N° Prontuário', 'Numero Prontuário', 'Prontuário', 'Prontuario'], ''),
@@ -837,14 +871,14 @@ function downloadExcel() {
 
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Pendências');
+    XLSX.utils.book_append_sheet(wb, ws, 'Dados Completos');
 
     ws['!cols'] = [
-        { wch: 22 }, { wch: 18 }, { wch: 15 }, { wch: 15 },
+        { wch: 20 }, { wch: 22 }, { wch: 18 }, { wch: 15 }, { wch: 15 },
         { wch: 30 }, { wch: 30 }, { wch: 18 }, { wch: 20 },
         { wch: 25 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 20 }
     ];
 
     const hoje = new Date().toISOString().split('T')[0];
-    XLSX.writeFile(wb, `Pendencias_Eldorado_${hoje}.xlsx`);
+    XLSX.writeFile(wb, `Dados_Eldorado_${hoje}.xlsx`);
 }
