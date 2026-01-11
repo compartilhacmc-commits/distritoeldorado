@@ -934,7 +934,7 @@ function createPieChart(canvasId, labels, data) {
 }
 
 // ===================================
-// ✅ ATUALIZAR TABELA COM DESTAQUE PARA VENCENDO EM 15 DIAS
+// ✅ ATUALIZAR TABELA SEM A COLUNA "SOLICITAÇÃO"
 // ===================================
 function updateTable() {
     const tbody = document.getElementById('tableBody');
@@ -942,7 +942,7 @@ function updateTable() {
     tbody.innerHTML = '';
 
     if (filteredData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="13" class="loading-message"><i class="fas fa-inbox"></i> Nenhum registro encontrado</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="12" class="loading-message"><i class="fas fa-inbox"></i> Nenhum registro encontrado</td></tr>';
         footer.textContent = 'Mostrando 0 registros';
         return;
     }
@@ -953,15 +953,6 @@ function updateTable() {
         const row = document.createElement('tr');
 
         const origem = item['_origem'] || '-';
-
-        const solicitacao = getColumnValue(item, [
-            'Solicitação',
-            'Solicitacao',
-            'N° Solicitação',
-            'Nº Solicitação',
-            'Numero Solicitação',
-            'Numero Solicitacao'
-        ]);
 
         const dataSolicitacao = getColumnValue(item, [
             'Data da Solicitação',
@@ -1025,7 +1016,6 @@ function updateTable() {
 
         row.innerHTML = `
             <td>${origem}</td>
-            <td>${solicitacao}</td>
             <td>${formatDate(dataSolicitacao)}</td>
             <td>${prontuario}</td>
             <td>${item['Telefone'] || '-'}</td>
@@ -1088,7 +1078,7 @@ function refreshData() {
 }
 
 // ===================================
-// DOWNLOAD EXCEL
+// DOWNLOAD EXCEL (SEM COLUNA "SOLICITAÇÃO")
 // ===================================
 function downloadExcel() {
     if (filteredData.length === 0) {
@@ -1098,7 +1088,6 @@ function downloadExcel() {
 
     const exportData = filteredData.map(item => ({
         'Origem': item['_origem'] || '',
-        'Solicitação': getColumnValue(item, ['Solicitação', 'Solicitacao', 'N° Solicitação', 'Nº Solicitação'], ''),
         'Data Solicitação': getColumnValue(item, ['Data da Solicitação', 'Data Solicitação', 'Data da Solicitacao', 'Data Solicitacao'], ''),
         'Nº Prontuário': getColumnValue(item, ['Nº Prontuário', 'N° Prontuário', 'Numero Prontuário', 'Prontuário', 'Prontuario'], ''),
         'Telefone': item['Telefone'] || '',
@@ -1118,7 +1107,7 @@ function downloadExcel() {
     XLSX.utils.book_append_sheet(wb, ws, 'Dados Completos');
 
     ws['!cols'] = [
-        { wch: 20 }, { wch: 22 }, { wch: 18 }, { wch: 15 }, { wch: 15 },
+        { wch: 20 }, { wch: 18 }, { wch: 15 }, { wch: 15 },
         { wch: 30 }, { wch: 30 }, { wch: 18 }, { wch: 20 },
         { wch: 25 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 20 }
     ];
@@ -1126,5 +1115,3 @@ function downloadExcel() {
     const hoje = new Date().toISOString().split('T')[0];
     XLSX.writeFile(wb, `Dados_Eldorado_${hoje}.xlsx`);
 }
-
-
