@@ -618,7 +618,7 @@ function createVerticalBarChart(canvasId, labels, data, color) {
 }
 
 // ===================================
-// ✅ CRIAR GRÁFICO DE PIZZA COM LEGENDA PRETA E NEGRITO
+// ✅ CRIAR GRÁFICO DE PIZZA COM LEGENDA COMPLETA (TEXTO + BOLINHA)
 // ===================================
 function createPieChart(canvasId, labels, data) {
     const ctx = document.getElementById(canvasId);
@@ -631,7 +631,6 @@ function createPieChart(canvasId, labels, data) {
     ];
 
     const total = data.reduce((sum, val) => sum + val, 0);
-    const percentages = data.map(val => total > 0 ? ((val / total) * 100).toFixed(1) : '0.0');
 
     chartPizzaStatus = new Chart(ctx, {
         type: 'pie',
@@ -649,23 +648,33 @@ function createPieChart(canvasId, labels, data) {
             maintainAspectRatio: false,
             plugins: {
                 legend: {
+                    display: true,
                     position: 'right',
                     labels: {
                         font: { 
-                            size: 14, // ✅ AUMENTADO
-                            weight: 'bold' // ✅ NEGRITO
+                            size: 14,
+                            weight: 'bold',
+                            family: 'Arial, sans-serif'
                         },
-                        color: '#000000', // ✅ PRETO
+                        color: '#000000',
                         padding: 15,
                         usePointStyle: true,
                         pointStyle: 'circle',
+                        boxWidth: 20,
+                        boxHeight: 20,
                         generateLabels: function(chart) {
                             const datasets = chart.data.datasets;
-                            return chart.data.labels.map((label, i) => {
-                                const percentage = percentages[i];
+                            const labels = chart.data.labels;
+                            
+                            return labels.map((label, i) => {
+                                const value = datasets[0].data[i];
+                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+                                
                                 return {
-                                    text: `${label}: ${percentage}%`,
+                                    text: `${label} (${percentage}%)`,
                                     fillStyle: datasets[0].backgroundColor[i],
+                                    strokeStyle: datasets[0].backgroundColor[i],
+                                    lineWidth: 2,
                                     hidden: false,
                                     index: i
                                 };
@@ -684,33 +693,37 @@ function createPieChart(canvasId, labels, data) {
                         label: function(context) {
                             const value = context.parsed;
                             const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-                            return `${context.label}: ${percentage}% (${value})`;
+                            return `${context.label}: ${percentage}% (${value} registros)`;
                         }
                     }
                 }
             }
         },
         plugins: [{
-            id: 'customPieLabels',
+            id: 'customPieLabelsInside',
             afterDatasetsDraw: function(chart) {
                 const ctx = chart.ctx;
-                chart.data.datasets.forEach(function(dataset, datasetIndex) {
-                    const meta = chart.getDatasetMeta(datasetIndex);
-                    if (!meta.hidden) {
-                        meta.data.forEach(function(element, index) {
-                            const percentage = percentages[index];
-                            if (parseFloat(percentage) > 5) {
-                                ctx.fillStyle = '#ffffff';
-                                ctx.font = 'bold 13px Arial';
-                                ctx.textAlign = 'center';
-                                ctx.textBaseline = 'middle';
-
-                                const position = element.tooltipPosition();
-                                ctx.fillText(`${percentage}%`, position.x, position.y);
-                            }
-                        });
+                const dataset = chart.data.datasets[0];
+                const meta = chart.getDatasetMeta(0);
+                
+                ctx.save();
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                
+                meta.data.forEach(function(element, index) {
+                    const value = dataset.data[index];
+                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+                    
+                    // Só mostra a porcentagem dentro da fatia se for maior que 5%
+                    if (parseFloat(percentage) > 5) {
+                        ctx.fillStyle = '#ffffff';
+                        const position = element.tooltipPosition();
+                        ctx.fillText(`${percentage}%`, position.x, position.y);
                     }
                 });
+                
+                ctx.restore();
             }
         }]
     });
@@ -892,3 +905,4 @@ function downloadExcel() {
     const hoje = new Date().toISOString().split('T')[0];
     XLSX.writeFile(wb, `Dados_Eldorado_${hoje}.xlsx`);
 }
+
