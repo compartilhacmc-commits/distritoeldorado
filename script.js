@@ -248,7 +248,7 @@ function showLoading(show) {
 }
 
 // ===================================
-// POPULAR FILTROS (MULTISELECT)
+// ✅ POPULAR FILTROS (MULTISELECT + MÊS)
 // ===================================
 function populateFilters() {
     // ✅ FILTRO DE ORIGEM
@@ -272,10 +272,48 @@ function populateFilters() {
     setMultiSelectText('msUnidadeText', [], 'Todas');
     setMultiSelectText('msEspecialidadeText', [], 'Todas');
     setMultiSelectText('msPrestadorText', [], 'Todos');
+
+    // ✅ POPULAR FILTRO DE MÊS
+    populateMonthFilter();
 }
 
 // ===================================
-// APLICAR FILTROS (MULTISELECT)
+// ✅ POPULAR FILTRO DE MÊS (BASEADO EM "Data Início da Pendência")
+// ===================================
+function populateMonthFilter() {
+    const selectMes = document.getElementById('filterMes');
+    const mesesSet = new Set();
+
+    allData.forEach(item => {
+        const dataInicio = parseDate(getColumnValue(item, [
+            'Data Início da Pendência',
+            'Data Inicio da Pendencia',
+            'Data Início Pendência',
+            'Data Inicio Pendencia'
+        ]));
+
+        if (dataInicio) {
+            const mesAno = `${dataInicio.getFullYear()}-${String(dataInicio.getMonth() + 1).padStart(2, '0')}`;
+            mesesSet.add(mesAno);
+        }
+    });
+
+    const mesesOrdenados = Array.from(mesesSet).sort().reverse();
+
+    selectMes.innerHTML = '<option value="">Todos os Meses</option>';
+    
+    mesesOrdenados.forEach(mesAno => {
+        const [ano, mes] = mesAno.split('-');
+        const nomeMes = new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        const option = document.createElement('option');
+        option.value = mesAno;
+        option.textContent = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+        selectMes.appendChild(option);
+    });
+}
+
+// ===================================
+// ✅ APLICAR FILTROS (MULTISELECT + MÊS)
 // ===================================
 function applyFilters() {
     const origemSel = getSelectedFromPanel('msOrigemPanel');
@@ -283,6 +321,7 @@ function applyFilters() {
     const unidadeSel = getSelectedFromPanel('msUnidadePanel');
     const especialidadeSel = getSelectedFromPanel('msEspecialidadePanel');
     const prestadorSel = getSelectedFromPanel('msPrestadorPanel');
+    const mesSel = document.getElementById('filterMes').value;
 
     setMultiSelectText('msOrigemText', origemSel, 'Todas');
     setMultiSelectText('msStatusText', statusSel, 'Todos');
@@ -296,14 +335,32 @@ function applyFilters() {
         const okUnidade = (unidadeSel.length === 0) || unidadeSel.includes(item['Unidade Solicitante'] || '');
         const okEsp = (especialidadeSel.length === 0) || especialidadeSel.includes(item['Cbo Especialidade'] || '');
         const okPrest = (prestadorSel.length === 0) || prestadorSel.includes(item['Prestador'] || '');
-        return okOrigem && okStatus && okUnidade && okEsp && okPrest;
+
+        // ✅ FILTRO POR MÊS
+        let okMes = true;
+        if (mesSel) {
+            const dataInicio = parseDate(getColumnValue(item, [
+                'Data Início da Pendência',
+                'Data Inicio da Pendencia',
+                'Data Início Pendência',
+                'Data Inicio Pendencia'
+            ]));
+            if (dataInicio) {
+                const mesAnoItem = `${dataInicio.getFullYear()}-${String(dataInicio.getMonth() + 1).padStart(2, '0')}`;
+                okMes = (mesAnoItem === mesSel);
+            } else {
+                okMes = false;
+            }
+        }
+
+        return okOrigem && okStatus && okUnidade && okEsp && okPrest && okMes;
     });
 
     updateDashboard();
 }
 
 // ===================================
-// LIMPAR FILTROS (MULTISELECT)
+// ✅ LIMPAR FILTROS (MULTISELECT + MÊS)
 // ===================================
 function clearFilters() {
     ['msOrigemPanel','msStatusPanel','msUnidadePanel','msEspecialidadePanel','msPrestadorPanel'].forEach(panelId => {
@@ -319,6 +376,7 @@ function clearFilters() {
     setMultiSelectText('msPrestadorText', [], 'Todos');
 
     document.getElementById('searchInput').value = '';
+    document.getElementById('filterMes').value = '';
 
     filteredData = [...allData];
     updateDashboard();
@@ -380,7 +438,13 @@ function updateCards() {
     let pendencias30 = 0;
 
     filteredData.forEach(item => {
-        const dataInicio = parseDate(item['Data Início da Pendência']);
+        const dataInicio = parseDate(getColumnValue(item, [
+            'Data Início da Pendência',
+            'Data Inicio da Pendencia',
+            'Data Início Pendência',
+            'Data Inicio Pendencia'
+        ]));
+
         if (dataInicio) {
             const diasDecorridos = Math.floor((hoje - dataInicio) / (1000 * 60 * 60 * 24));
 
@@ -597,14 +661,13 @@ function createVerticalBarChart(canvasId, labels, data, color) {
                 const dataset = chart.data.datasets[0];
 
                 ctx.save();
-                ctx.fillStyle = '#FFFFFF'; // ✅ BRANCO
-                ctx.font = 'bold 16px Arial'; // ✅ NEGRITO
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 16px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
 
                 meta.data.forEach((bar, i) => {
                     const value = dataset.data[i];
-                    // ✅ POSICIONA NO MEIO DA BARRA (bar.y + altura/2)
                     const yPos = bar.y + (bar.height / 2);
                     ctx.fillText(String(value), bar.x, yPos);
                 });
@@ -715,7 +778,6 @@ function createPieChart(canvasId, labels, data) {
                     const value = dataset.data[index];
                     const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
                     
-                    // Só mostra a porcentagem dentro da fatia se for maior que 5%
                     if (parseFloat(percentage) > 5) {
                         ctx.fillStyle = '#ffffff';
                         const position = element.tooltipPosition();
@@ -730,7 +792,7 @@ function createPieChart(canvasId, labels, data) {
 }
 
 // ===================================
-// ✅ ATUALIZAR TABELA (CORRIGIDO PARA MOSTRAR "Solicitação")
+// ✅ ATUALIZAR TABELA COM DESTAQUE PARA VENCENDO EM 15 DIAS
 // ===================================
 function updateTable() {
     const tbody = document.getElementById('tableBody');
@@ -743,12 +805,13 @@ function updateTable() {
         return;
     }
 
+    const hoje = new Date();
+
     filteredData.forEach(item => {
         const row = document.createElement('tr');
 
         const origem = item['_origem'] || '-';
 
-        // ✅ CORRIGIDO: Busca por várias variações possíveis da coluna "Solicitação"
         const solicitacao = getColumnValue(item, [
             'Solicitação',
             'Solicitacao',
@@ -773,7 +836,7 @@ function updateTable() {
             'Prontuario'
         ]);
 
-        const dataInicio = getColumnValue(item, [
+        const dataInicioStr = getColumnValue(item, [
             'Data Início da Pendência',
             'Data Inicio da Pendencia',
             'Data Início Pendência',
@@ -808,6 +871,16 @@ function updateTable() {
             'Email 30 dias'
         ]);
 
+        // ✅ VERIFICAR SE ESTÁ VENCENDO EM 15 DIAS (entre 15 e 30 dias)
+        const dataInicio = parseDate(dataInicioStr);
+        let isVencendo15 = false;
+        if (dataInicio) {
+            const diasDecorridos = Math.floor((hoje - dataInicio) / (1000 * 60 * 60 * 24));
+            if (diasDecorridos >= 15 && diasDecorridos < 30) {
+                isVencendo15 = true;
+            }
+        }
+
         row.innerHTML = `
             <td>${origem}</td>
             <td>${solicitacao}</td>
@@ -816,13 +889,19 @@ function updateTable() {
             <td>${item['Telefone'] || '-'}</td>
             <td>${item['Unidade Solicitante'] || '-'}</td>
             <td>${item['Cbo Especialidade'] || '-'}</td>
-            <td>${formatDate(dataInicio)}</td>
+            <td>${formatDate(dataInicioStr)}</td>
             <td>${item['Status'] || '-'}</td>
             <td>${formatDate(prazo15)}</td>
             <td>${formatDate(email15)}</td>
             <td>${formatDate(prazo30)}</td>
             <td>${formatDate(email30)}</td>
         `;
+
+        // ✅ APLICAR DESTAQUE AMARELO SE VENCENDO EM 15 DIAS
+        if (isVencendo15) {
+            row.classList.add('row-vencendo-15');
+        }
+
         tbody.appendChild(row);
     });
 
@@ -905,4 +984,3 @@ function downloadExcel() {
     const hoje = new Date().toISOString().split('T')[0];
     XLSX.writeFile(wb, `Dados_Eldorado_${hoje}.xlsx`);
 }
-
