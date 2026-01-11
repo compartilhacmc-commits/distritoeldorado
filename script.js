@@ -25,6 +25,10 @@ let chartEspecialidades = null;
 let chartStatus = null;
 let chartPizzaStatus = null;
 
+// ✅ NOVOS GRÁFICOS
+let chartPendenciasPrestador = null;
+let chartPendenciasMes = null;
+
 // ===================================
 // FUNÇÃO AUXILIAR PARA BUSCAR VALOR DE COLUNA
 // ===================================
@@ -35,6 +39,14 @@ function getColumnValue(item, possibleNames, defaultValue = '-') {
         }
     }
     return defaultValue;
+}
+
+// ===================================
+// ✅ REGRA DE PENDÊNCIA: COLUNA "USUÁRIO" PREENCHIDA
+// ===================================
+function isPendenciaByUsuario(item) {
+    const usuario = getColumnValue(item, ['Usuário', 'Usuario', 'USUÁRIO', 'USUARIO'], '');
+    return !!(usuario && String(usuario).trim() !== '');
 }
 
 // ===================================
@@ -251,10 +263,6 @@ function showLoading(show) {
 // ✅ POPULAR FILTROS (MULTISELECT + MÊS)
 // ===================================
 function populateFilters() {
-    // ✅ FILTRO DE ORIGEM
-    const origens = [...new Set(allData.map(item => item['_origem']))].filter(Boolean).sort();
-    renderMultiSelect('msOrigemPanel', origens, applyFilters);
-
     const statusList = [...new Set(allData.map(item => item['Status']))].filter(Boolean).sort();
     renderMultiSelect('msStatusPanel', statusList, applyFilters);
 
@@ -267,7 +275,6 @@ function populateFilters() {
     const prestadores = [...new Set(allData.map(item => item['Prestador']))].filter(Boolean).sort();
     renderMultiSelect('msPrestadorPanel', prestadores, applyFilters);
 
-    setMultiSelectText('msOrigemText', [], 'Todas');
     setMultiSelectText('msStatusText', [], 'Todos');
     setMultiSelectText('msUnidadeText', [], 'Todas');
     setMultiSelectText('msEspecialidadeText', [], 'Todas');
@@ -316,21 +323,18 @@ function populateMonthFilter() {
 // ✅ APLICAR FILTROS (MULTISELECT + MÊS)
 // ===================================
 function applyFilters() {
-    const origemSel = getSelectedFromPanel('msOrigemPanel');
     const statusSel = getSelectedFromPanel('msStatusPanel');
     const unidadeSel = getSelectedFromPanel('msUnidadePanel');
     const especialidadeSel = getSelectedFromPanel('msEspecialidadePanel');
     const prestadorSel = getSelectedFromPanel('msPrestadorPanel');
     const mesSel = document.getElementById('filterMes').value;
 
-    setMultiSelectText('msOrigemText', origemSel, 'Todas');
     setMultiSelectText('msStatusText', statusSel, 'Todos');
     setMultiSelectText('msUnidadeText', unidadeSel, 'Todas');
     setMultiSelectText('msEspecialidadeText', especialidadeSel, 'Todas');
     setMultiSelectText('msPrestadorText', prestadorSel, 'Todos');
 
     filteredData = allData.filter(item => {
-        const okOrigem = (origemSel.length === 0) || origemSel.includes(item['_origem'] || '');
         const okStatus = (statusSel.length === 0) || statusSel.includes(item['Status'] || '');
         const okUnidade = (unidadeSel.length === 0) || unidadeSel.includes(item['Unidade Solicitante'] || '');
         const okEsp = (especialidadeSel.length === 0) || especialidadeSel.includes(item['Cbo Especialidade'] || '');
@@ -353,7 +357,7 @@ function applyFilters() {
             }
         }
 
-        return okOrigem && okStatus && okUnidade && okEsp && okPrest && okMes;
+        return okStatus && okUnidade && okEsp && okPrest && okMes;
     });
 
     updateDashboard();
@@ -363,13 +367,12 @@ function applyFilters() {
 // ✅ LIMPAR FILTROS (MULTISELECT + MÊS)
 // ===================================
 function clearFilters() {
-    ['msOrigemPanel','msStatusPanel','msUnidadePanel','msEspecialidadePanel','msPrestadorPanel'].forEach(panelId => {
+    ['msStatusPanel','msUnidadePanel','msEspecialidadePanel','msPrestadorPanel'].forEach(panelId => {
         const panel = document.getElementById(panelId);
         if (!panel) return;
         panel.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
     });
 
-    setMultiSelectText('msOrigemText', [], 'Todas');
     setMultiSelectText('msStatusText', [], 'Todos');
     setMultiSelectText('msUnidadeText', [], 'Todas');
     setMultiSelectText('msEspecialidadeText', [], 'Todas');
@@ -427,7 +430,7 @@ function updateDashboard() {
 }
 
 // ===================================
-// ATUALIZAR CARDS
+// ✅ ATUALIZAR CARDS (CONTANDO POR "USUÁRIO" PREENCHIDO)
 // ===================================
 function updateCards() {
     const total = allData.length;
@@ -437,7 +440,10 @@ function updateCards() {
     let pendencias15 = 0;
     let pendencias30 = 0;
 
+    // ✅ Só conta como pendência se "Usuário" estiver preenchido
     filteredData.forEach(item => {
+        if (!isPendenciaByUsuario(item)) return;
+
         const dataInicio = parseDate(getColumnValue(item, [
             'Data Início da Pendência',
             'Data Inicio da Pendencia',
@@ -453,6 +459,7 @@ function updateCards() {
         }
     });
 
+    // Mantive o "Total de Registros" como total geral, igual você já tinha.
     document.getElementById('totalPendencias').textContent = total;
     document.getElementById('pendencias15').textContent = pendencias15;
     document.getElementById('pendencias30').textContent = pendencias30;
@@ -462,17 +469,16 @@ function updateCards() {
 }
 
 // ===================================
-// ATUALIZAR GRÁFICOS
+// ✅ ATUALIZAR GRÁFICOS
 // ===================================
 function updateCharts() {
-    // ✅ Gráfico de Unidades (SOMENTE COM STATUS PREENCHIDO)
+    // ✅ Gráfico de Unidades (SOMENTE COM "USUÁRIO" PREENCHIDO)
     const unidadesCount = {};
     filteredData.forEach(item => {
-        const status = item['Status'];
-        if (status && status.trim() !== '') {
-            const unidade = item['Unidade Solicitante'] || 'Não informado';
-            unidadesCount[unidade] = (unidadesCount[unidade] || 0) + 1;
-        }
+        if (!isPendenciaByUsuario(item)) return;
+
+        const unidade = item['Unidade Solicitante'] || 'Não informado';
+        unidadesCount[unidade] = (unidadesCount[unidade] || 0) + 1;
     });
 
     const unidadesLabels = Object.keys(unidadesCount)
@@ -482,14 +488,13 @@ function updateCharts() {
 
     createHorizontalBarChart('chartUnidades', unidadesLabels, unidadesValues, '#48bb78');
 
-    // ✅ Gráfico de Especialidades (SOMENTE COM STATUS PREENCHIDO)
+    // ✅ Gráfico de Especialidades (SOMENTE COM "USUÁRIO" PREENCHIDO)
     const especialidadesCount = {};
     filteredData.forEach(item => {
-        const status = item['Status'];
-        if (status && status.trim() !== '') {
-            const especialidade = item['Cbo Especialidade'] || 'Não informado';
-            especialidadesCount[especialidade] = (especialidadesCount[especialidade] || 0) + 1;
-        }
+        if (!isPendenciaByUsuario(item)) return;
+
+        const especialidade = item['Cbo Especialidade'] || 'Não informado';
+        especialidadesCount[especialidade] = (especialidadesCount[especialidade] || 0) + 1;
     });
 
     const especialidadesLabels = Object.keys(especialidadesCount)
@@ -499,7 +504,7 @@ function updateCharts() {
 
     createHorizontalBarChart('chartEspecialidades', especialidadesLabels, especialidadesValues, '#ef4444');
 
-    // ✅ GRÁFICO DE STATUS (VERTICAL LARANJA COM VALORES DENTRO DAS BARRAS)
+    // ✅ GRÁFICO DE STATUS (mantido como estava: distribuição geral por Status)
     const statusCount = {};
     filteredData.forEach(item => {
         const status = item['Status'] || 'Não informado';
@@ -512,12 +517,68 @@ function updateCharts() {
 
     createVerticalBarChart('chartStatus', statusLabels, statusValues, '#f97316');
 
-    // ✅ GRÁFICO DE PIZZA COM LEGENDA PRETA E NEGRITO
+    // ✅ GRÁFICO DE PIZZA (mantido)
     createPieChart('chartPizzaStatus', statusLabels, statusValues);
+
+    // ✅ NOVO: PENDÊNCIAS POR PRESTADOR (USUÁRIO PREENCHIDO)
+    const prestadorCount = {};
+    filteredData.forEach(item => {
+        if (!isPendenciaByUsuario(item)) return;
+
+        const prest = item['Prestador'] || 'Não informado';
+        prestadorCount[prest] = (prestadorCount[prest] || 0) + 1;
+    });
+
+    const prestLabels = Object.keys(prestadorCount)
+        .sort((a, b) => prestadorCount[b] - prestadorCount[a])
+        .slice(0, 50);
+    const prestValues = prestLabels.map(l => prestadorCount[l]);
+
+    createHorizontalBarChartCenteredValue(
+        'chartPendenciasPrestador',
+        prestLabels,
+        prestValues,
+        '#4c1d95' // roxo escuro
+    );
+
+    // ✅ NOVO: PENDÊNCIAS POR MÊS (USUÁRIO PREENCHIDO)
+    const mesCount = {};
+    filteredData.forEach(item => {
+        if (!isPendenciaByUsuario(item)) return;
+
+        const dataInicio = parseDate(getColumnValue(item, [
+            'Data Início da Pendência',
+            'Data Inicio da Pendencia',
+            'Data Início Pendência',
+            'Data Inicio Pendencia'
+        ]));
+
+        let chave = 'Não informado';
+        if (dataInicio) {
+            const mesAno = `${dataInicio.getFullYear()}-${String(dataInicio.getMonth() + 1).padStart(2, '0')}`;
+            const [ano, mes] = mesAno.split('-');
+            const nomeMes = new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+            chave = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+        }
+
+        mesCount[chave] = (mesCount[chave] || 0) + 1;
+    });
+
+    const mesLabels = Object.keys(mesCount)
+        .sort((a, b) => mesCount[b] - mesCount[a])
+        .slice(0, 50);
+    const mesValues = mesLabels.map(l => mesCount[l]);
+
+    createHorizontalBarChartCenteredValue(
+        'chartPendenciasMes',
+        mesLabels,
+        mesValues,
+        '#0b2a6f' // azul escuro
+    );
 }
 
 // ===================================
-// CRIAR GRÁFICO DE BARRAS HORIZONTAIS
+// CRIAR GRÁFICO DE BARRAS HORIZONTAIS (PADRÃO)
 // ===================================
 function createHorizontalBarChart(canvasId, labels, data, color) {
     const ctx = document.getElementById(canvasId);
@@ -594,6 +655,87 @@ function createHorizontalBarChart(canvasId, labels, data, color) {
 
     if (canvasId === 'chartUnidades') chartUnidades = chart;
     if (canvasId === 'chartEspecialidades') chartEspecialidades = chart;
+}
+
+// ===================================
+// ✅ NOVO: GRÁFICO HORIZONTAL COM VALOR NO MEIO DA BARRA (BRANCO E NEGRITO)
+// ===================================
+function createHorizontalBarChartCenteredValue(canvasId, labels, data, color) {
+    const ctx = document.getElementById(canvasId);
+
+    if (canvasId === 'chartPendenciasPrestador' && chartPendenciasPrestador) chartPendenciasPrestador.destroy();
+    if (canvasId === 'chartPendenciasMes' && chartPendenciasMes) chartPendenciasMes.destroy();
+
+    const chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels,
+            datasets: [{
+                label: 'Quantidade',
+                data,
+                backgroundColor: color,
+                borderWidth: 0,
+                borderRadius: 6,
+                barPercentage: 0.75,
+                categoryPercentage: 0.85
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    enabled: true,
+                    backgroundColor: 'rgba(0,0,0,0.85)',
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 13 },
+                    padding: 12,
+                    cornerRadius: 8
+                }
+            },
+            scales: {
+                x: { display: false, grid: { display: false } },
+                y: {
+                    ticks: {
+                        font: { size: 12, weight: '600' },
+                        color: '#4a5568',
+                        padding: 8
+                    },
+                    grid: { display: false }
+                }
+            }
+        },
+        plugins: [{
+            id: 'centerValueInsideHorizontalBar',
+            afterDatasetsDraw(chart) {
+                const { ctx } = chart;
+                const meta = chart.getDatasetMeta(0);
+                const dataset = chart.data.datasets[0];
+
+                ctx.save();
+                ctx.fillStyle = '#FFFFFF';
+                ctx.font = 'bold 14px Arial';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+
+                meta.data.forEach((bar, i) => {
+                    const value = dataset.data[i];
+
+                    const centerX = (bar.base + bar.x) / 2;
+                    const centerY = bar.y;
+
+                    ctx.fillText(String(value), centerX, centerY);
+                });
+
+                ctx.restore();
+            }
+        }]
+    });
+
+    if (canvasId === 'chartPendenciasPrestador') chartPendenciasPrestador = chart;
+    if (canvasId === 'chartPendenciasMes') chartPendenciasMes = chart;
 }
 
 // ===================================
