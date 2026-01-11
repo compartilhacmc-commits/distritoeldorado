@@ -955,8 +955,8 @@ function updateTable() {
         const origem = item['_origem'] || '-';
 
         const solicitacao = getColumnValue(item, [
-            'Solicitação',
             'Solicitacao',
+            'Solicitação',
             'N° Solicitação',
             'Nº Solicitação',
             'Numero Solicitação',
@@ -1098,7 +1098,7 @@ function downloadExcel() {
 
     const exportData = filteredData.map(item => ({
         'Origem': item['_origem'] || '',
-        'Solicitação': getColumnValue(item, ['Solicitação', 'Solicitacao', 'N° Solicitação', 'Nº Solicitação'], ''),
+        'Solicitacao': getColumnValue(item, ['Solicitação', 'Solicitacao', 'N° Solicitação', 'Nº Solicitação'], ''),
         'Data Solicitação': getColumnValue(item, ['Data da Solicitação', 'Data Solicitação', 'Data da Solicitacao', 'Data Solicitacao'], ''),
         'Nº Prontuário': getColumnValue(item, ['Nº Prontuário', 'N° Prontuário', 'Numero Prontuário', 'Prontuário', 'Prontuario'], ''),
         'Telefone': item['Telefone'] || '',
@@ -1126,3 +1126,4 @@ function downloadExcel() {
     const hoje = new Date().toISOString().split('T')[0];
     XLSX.writeFile(wb, `Dados_Eldorado_${hoje}.xlsx`);
 }
+
