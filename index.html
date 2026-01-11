@@ -88,18 +88,6 @@
             </h3>
 
             <div class="filters-grid">
-                <!-- ORIGEM (nova opção) -->
-                <div class="filter-box">
-                    <label>Origem dos Dados:</label>
-                    <div class="multi-select" id="msOrigem">
-                        <button type="button" class="multi-select-btn" onclick="toggleMultiSelect('msOrigem')">
-                            <span class="multi-select-text" id="msOrigemText">Todas</span>
-                            <i class="fas fa-chevron-down"></i>
-                        </button>
-                        <div class="multi-select-panel" id="msOrigemPanel"></div>
-                    </div>
-                </div>
-
                 <!-- STATUS (multi) -->
                 <div class="filter-box">
                     <label>Status:</label>
@@ -148,7 +136,7 @@
                     </div>
                 </div>
 
-                <!-- ✅ NOVO FILTRO POR MÊS -->
+                <!-- ✅ FILTRO POR MÊS -->
                 <div class="filter-box">
                     <label>Filtrar por Mês:</label>
                     <select class="filter-select" id="filterMes" onchange="applyFilters()">
@@ -190,6 +178,22 @@
                 <h3 class="chart-title">Distribuição Percentual por Status</h3>
                 <div class="chart-wrapper chart-wrapper-pizza">
                     <canvas id="chartPizzaStatus"></canvas>
+                </div>
+            </div>
+
+            <!-- ✅ NOVO: PENDÊNCIAS POR PRESTADOR -->
+            <div class="chart-box">
+                <h3 class="chart-title">Quantidade de Pendências por Prestador</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartPendenciasPrestador"></canvas>
+                </div>
+            </div>
+
+            <!-- ✅ NOVO: PENDÊNCIAS POR MÊS -->
+            <div class="chart-box">
+                <h3 class="chart-title">Quantidade de Pendências por Mês</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartPendenciasMes"></canvas>
                 </div>
             </div>
         </div>
