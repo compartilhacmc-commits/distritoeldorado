@@ -45,7 +45,7 @@
                     <i class="fas fa-clipboard-list"></i>
                 </div>
                 <div class="card-info">
-                    <h3 class="card-title">Total de Pendências</h3>
+                    <h3 class="card-title">Total de Registros</h3>
                     <p class="card-value" id="totalPendencias">0</p>
                 </div>
             </div>
@@ -88,6 +88,18 @@
             </h3>
 
             <div class="filters-grid">
+                <!-- ORIGEM (nova opção) -->
+                <div class="filter-box">
+                    <label>Origem dos Dados:</label>
+                    <div class="multi-select" id="msOrigem">
+                        <button type="button" class="multi-select-btn" onclick="toggleMultiSelect('msOrigem')">
+                            <span class="multi-select-text" id="msOrigemText">Todas</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-select-panel" id="msOrigemPanel"></div>
+                    </div>
+                </div>
+
                 <!-- STATUS (multi) -->
                 <div class="filter-box">
                     <label>Status:</label>
@@ -145,21 +157,21 @@
         <!-- Gráficos -->
         <div class="charts-container">
             <div class="chart-box">
-                <h3 class="chart-title">Pendências por Unidade de Saúde</h3>
+                <h3 class="chart-title">Registros por Unidade de Saúde</h3>
                 <div class="chart-wrapper">
                     <canvas id="chartUnidades"></canvas>
                 </div>
             </div>
 
             <div class="chart-box">
-                <h3 class="chart-title">Pendências por Especialidade</h3>
+                <h3 class="chart-title">Registros por Especialidade</h3>
                 <div class="chart-wrapper">
                     <canvas id="chartEspecialidades"></canvas>
                 </div>
             </div>
 
             <div class="chart-box">
-                <h3 class="chart-title">Pendências por Status</h3>
+                <h3 class="chart-title">Registros por Status</h3>
                 <div class="chart-wrapper chart-wrapper-status">
                     <canvas id="chartStatus"></canvas>
                 </div>
@@ -190,6 +202,7 @@
                 <table class="data-table" id="dataTable">
                     <thead>
                         <tr>
+                            <th>Origem</th>
                             <th>Solicitação</th>
                             <th>Data Solicitação</th>
                             <th>Nº Prontuário</th>
@@ -206,7 +219,7 @@
                     </thead>
                     <tbody id="tableBody">
                         <tr>
-                            <td colspan="12" class="loading-message">
+                            <td colspan="13" class="loading-message">
                                 <i class="fas fa-spinner fa-spin"></i> Carregando dados...
                             </td>
                         </tr>
@@ -234,7 +247,7 @@
     <div class="loading-overlay" id="loadingOverlay">
         <div class="loading-content">
             <i class="fas fa-spinner fa-spin"></i>
-            <p>Carregando dados da planilha...</p>
+            <p>Carregando dados das planilhas...</p>
         </div>
     </div>
 
@@ -243,8 +256,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-
-
-
-
-
