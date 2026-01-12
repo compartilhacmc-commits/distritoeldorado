@@ -934,7 +934,7 @@ function createPieChart(canvasId, labels, data) {
 }
 
 // ===================================
-// ✅ ATUALIZAR TABELA SEM A COLUNA "SOLICITAÇÃO"
+// ✅ ATUALIZAR TABELA - DESTAQUE AMARELO APENAS PARA ABA "PENDÊNCIAS ELDORADO"
 // ===================================
 function updateTable() {
     const tbody = document.getElementById('tableBody');
@@ -1004,10 +1004,11 @@ function updateTable() {
             'Email 30 dias'
         ]);
 
-        // ✅ VERIFICAR SE ESTÁ VENCENDO EM 15 DIAS (entre 15 e 30 dias)
+        // ✅ VERIFICAR SE ESTÁ VENCENDO EM 15 DIAS E SE É DA ABA "PENDÊNCIAS ELDORADO"
         const dataInicio = parseDate(dataInicioStr);
         let isVencendo15 = false;
-        if (dataInicio) {
+        
+        if (dataInicio && origem === 'PENDÊNCIAS ELDORADO') {
             const diasDecorridos = Math.floor((hoje - dataInicio) / (1000 * 60 * 60 * 24));
             if (diasDecorridos >= 15 && diasDecorridos < 30) {
                 isVencendo15 = true;
@@ -1029,7 +1030,7 @@ function updateTable() {
             <td>${formatDate(email30)}</td>
         `;
 
-        // ✅ APLICAR DESTAQUE AMARELO SE VENCENDO EM 15 DIAS
+        // ✅ APLICAR DESTAQUE AMARELO SOMENTE SE FOR DA ABA "PENDÊNCIAS ELDORADO" E ESTIVER VENCENDO EM 15 DIAS
         if (isVencendo15) {
             row.classList.add('row-vencendo-15');
         }
@@ -1078,7 +1079,7 @@ function refreshData() {
 }
 
 // ===================================
-// DOWNLOAD EXCEL (SEM COLUNA "SOLICITAÇÃO")
+// DOWNLOAD EXCEL
 // ===================================
 function downloadExcel() {
     if (filteredData.length === 0) {
