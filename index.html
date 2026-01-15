@@ -154,16 +154,9 @@
             </button>
         </div>
 
-        <!-- Gráficos -->
+        <!-- Gráficos (ORDEM ALTERADA) -->
         <div class="charts-container">
-            <!-- ✅ NOVO: PRIMEIRO GRÁFICO - PENDÊNCIAS NÃO RESOLVIDAS POR UNIDADE -->
-            <div class="chart-box">
-                <h3 class="chart-title">Pendências Não Resolvidas por Unidade de Saúde</h3>
-                <div class="chart-wrapper">
-                    <canvas id="chartPendenciasNaoResolvidasUnidade"></canvas>
-                </div>
-            </div>
-
+            <!-- LINHA 1 -->
             <div class="chart-box">
                 <h3 class="chart-title">Registros Geral de Pendências por Unidade de Saúde</h3>
                 <div class="chart-wrapper">
@@ -171,6 +164,14 @@
                 </div>
             </div>
 
+            <div class="chart-box">
+                <h3 class="chart-title">Pendências Não Resolvidas por Unidade de Saúde</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartPendenciasNaoResolvidasUnidade"></canvas>
+                </div>
+            </div>
+
+            <!-- LINHA 2 -->
             <div class="chart-box">
                 <h3 class="chart-title">Registros Geral de Pendências por Especialidade</h3>
                 <div class="chart-wrapper">
@@ -185,13 +186,7 @@
                 </div>
             </div>
 
-            <div class="chart-box">
-                <h3 class="chart-title">Distribuição Percentual por Status</h3>
-                <div class="chart-wrapper chart-wrapper-pizza">
-                    <canvas id="chartPizzaStatus"></canvas>
-                </div>
-            </div>
-
+            <!-- LINHA 3 -->
             <div class="chart-box">
                 <h3 class="chart-title">Quantidade de Pendências por Prestador</h3>
                 <div class="chart-wrapper">
@@ -206,7 +201,7 @@
                 </div>
             </div>
 
-            <!-- ✅ NOVO: RESOLUTIVIDADE POR UNIDADE DE SAÚDE -->
+            <!-- LINHA 4 -->
             <div class="chart-box">
                 <h3 class="chart-title">Estatística de Resolutividade por Unidade de Saúde</h3>
                 <div class="chart-wrapper">
@@ -214,11 +209,18 @@
                 </div>
             </div>
 
-            <!-- ✅ NOVO: RESOLUTIVIDADE POR PRESTADOR -->
             <div class="chart-box">
                 <h3 class="chart-title">Estatística de Resolutividade por Prestador</h3>
                 <div class="chart-wrapper">
                     <canvas id="chartResolutividadePrestador"></canvas>
+                </div>
+            </div>
+
+            <!-- LINHA 5 - PIZZA (FULL WIDTH) -->
+            <div class="chart-box chart-box-full">
+                <h3 class="chart-title">Distribuição Percentual por Status</h3>
+                <div class="chart-wrapper chart-wrapper-pizza">
+                    <canvas id="chartPizzaStatus"></canvas>
                 </div>
             </div>
         </div>
