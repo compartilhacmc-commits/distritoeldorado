@@ -5,14 +5,19 @@ const SHEET_ID = '1r6NLcVkVLD5vp4UxPEa7TcreBpOd0qeNt-QREOG4Xr4';
 
 // ✅ CONFIGURAÇÃO DAS DUAS ABAS
 const SHEETS = [
-    {
-        name: 'PENDÊNCIAS ELDORADO',
-        url: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('PENDÊNCIAS ELDORADO')}`
-    },
-    {
-        name: 'RESOLVIDOS',
-        url: `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent('RESOLVIDOS')}`
-    }
+      // DISTRITO ELDORADO 
+  {
+    name: 'PENDÊNCIAS ELDORADO',
+    url: gvizCsvUrl('1r6NLcVkVLD5vp4UxPEa7TcreBpOd0qeNt-QREOG4Xr4', '278071504'),
+    distrito: 'ELDORADO',
+    tipo: 'PENDENTE'
+  },
+  {
+    name: 'RESOLVIDOS ELDORADO',
+    url: gvizCsvUrl('1r6NLcVkVLD5vp4UxPEa7TcreBpOd0qeNt-QREOG4Xr4', '2142054254'),
+    distrito: 'ELDORADO',
+    tipo: 'RESOLVIDO'
+  }
 ];
 
 // ===================================
@@ -1277,3 +1282,4 @@ function downloadExcel() {
     const hoje = new Date().toISOString().split('T')[0];
     XLSX.writeFile(wb, `Dados_Eldorado_${hoje}.xlsx`);
 }
+
