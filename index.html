@@ -136,12 +136,16 @@
                     </div>
                 </div>
 
-                <!-- ✅ FILTRO POR MÊS -->
+                <!-- FILTRO POR MÊS -->
                 <div class="filter-box">
                     <label>Filtrar por Mês:</label>
-                    <select class="filter-select" id="filterMes" onchange="applyFilters()">
-                        <option value="">Todos os Meses</option>
-                    </select>
+                    <div class="multi-select" id="msMes">
+                        <button type="button" class="multi-select-btn" onclick="toggleMultiSelect('msMes')">
+                            <span class="multi-select-text" id="msMesText">Todos os Meses</span>
+                            <i class="fas fa-chevron-down"></i>
+                        </button>
+                        <div class="multi-select-panel" id="msMesPanel"></div>
+                    </div>
                 </div>
             </div>
 
@@ -152,6 +156,14 @@
 
         <!-- Gráficos -->
         <div class="charts-container">
+            <!-- ✅ NOVO: PRIMEIRO GRÁFICO - PENDÊNCIAS NÃO RESOLVIDAS POR UNIDADE -->
+            <div class="chart-box">
+                <h3 class="chart-title">Pendências Não Resolvidas por Unidade de Saúde</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartPendenciasNaoResolvidasUnidade"></canvas>
+                </div>
+            </div>
+
             <div class="chart-box">
                 <h3 class="chart-title">Registros Geral de Pendências por Unidade de Saúde</h3>
                 <div class="chart-wrapper">
@@ -173,7 +185,6 @@
                 </div>
             </div>
 
-            <!-- GRÁFICO DE PIZZA -->
             <div class="chart-box">
                 <h3 class="chart-title">Distribuição Percentual por Status</h3>
                 <div class="chart-wrapper chart-wrapper-pizza">
@@ -181,7 +192,6 @@
                 </div>
             </div>
 
-            <!-- ✅ NOVO: PENDÊNCIAS POR PRESTADOR (VERTICAL) -->
             <div class="chart-box">
                 <h3 class="chart-title">Quantidade de Pendências por Prestador</h3>
                 <div class="chart-wrapper">
@@ -189,11 +199,26 @@
                 </div>
             </div>
 
-            <!-- ✅ NOVO: PENDÊNCIAS POR MÊS (VERTICAL) -->
             <div class="chart-box">
                 <h3 class="chart-title">Quantidade de Pendências por Mês</h3>
                 <div class="chart-wrapper">
                     <canvas id="chartPendenciasMes"></canvas>
+                </div>
+            </div>
+
+            <!-- ✅ NOVO: RESOLUTIVIDADE POR UNIDADE DE SAÚDE -->
+            <div class="chart-box">
+                <h3 class="chart-title">Estatística de Resolutividade por Unidade de Saúde</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartResolutividadeUnidade"></canvas>
+                </div>
+            </div>
+
+            <!-- ✅ NOVO: RESOLUTIVIDADE POR PRESTADOR -->
+            <div class="chart-box">
+                <h3 class="chart-title">Estatística de Resolutividade por Prestador</h3>
+                <div class="chart-wrapper">
+                    <canvas id="chartResolutividadePrestador"></canvas>
                 </div>
             </div>
         </div>
@@ -267,4 +292,3 @@
     <script src="script.js"></script>
 </body>
 </html>
-
