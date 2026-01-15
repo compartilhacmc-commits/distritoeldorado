@@ -1,20 +1,28 @@
 // ===================================
+// FUNÇÃO: URL CSV (Google Sheets gviz) + ANTI-CACHE
+// ===================================
+function gvizCsvUrl(sheetId, gid) {
+  const cacheBust = Date.now(); // força buscar atualizado
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}&_=${cacheBust}`;
+}
+
+// ===================================
 // CONFIGURAÇÃO DA PLANILHA (DUAS ABAS)
 // ===================================
 const SHEET_ID = '1r6NLcVkVLD5vp4UxPEa7TcreBpOd0qeNt-QREOG4Xr4';
 
 // ✅ CONFIGURAÇÃO DAS DUAS ABAS
 const SHEETS = [
-      // DISTRITO ELDORADO 
+  // DISTRITO ELDORADO
   {
     name: 'PENDÊNCIAS ELDORADO',
-    url: gvizCsvUrl('1r6NLcVkVLD5vp4UxPEa7TcreBpOd0qeNt-QREOG4Xr4', '278071504'),
+    url: gvizCsvUrl(SHEET_ID, '278071504'),
     distrito: 'ELDORADO',
     tipo: 'PENDENTE'
   },
   {
     name: 'RESOLVIDOS ELDORADO',
-    url: gvizCsvUrl('1r6NLcVkVLD5vp4UxPEa7TcreBpOd0qeNt-QREOG4Xr4', '2142054254'),
+    url: gvizCsvUrl(SHEET_ID, '2142054254'),
     distrito: 'ELDORADO',
     tipo: 'RESOLVIDO'
   }
@@ -39,1247 +47,1214 @@ let chartResolutividadePrestador = null;
 // FUNÇÃO AUXILIAR PARA BUSCAR VALOR DE COLUNA
 // ===================================
 function getColumnValue(item, possibleNames, defaultValue = '-') {
-    for (let name of possibleNames) {
-        if (item.hasOwnProperty(name) && item[name]) {
-            return item[name];
-        }
+  for (let name of possibleNames) {
+    if (Object.prototype.hasOwnProperty.call(item, name) && item[name]) {
+      return item[name];
     }
-    return defaultValue;
+  }
+  return defaultValue;
 }
 
 // ===================================
 // ✅ REGRA DE PENDÊNCIA: COLUNA "USUÁRIO" PREENCHIDA
 // ===================================
 function isPendenciaByUsuario(item) {
-    const usuario = getColumnValue(item, ['Usuário', 'Usuario', 'USUÁRIO', 'USUARIO'], '');
-    return !!(usuario && String(usuario).trim() !== '');
+  const usuario = getColumnValue(item, ['Usuário', 'Usuario', 'USUÁRIO', 'USUARIO'], '');
+  return !!(usuario && String(usuario).trim() !== '');
 }
 
 // ===================================
 // MULTISELECT (CHECKBOX) HELPERS
 // ===================================
 function toggleMultiSelect(id) {
-    document.getElementById(id).classList.toggle('open');
+  document.getElementById(id).classList.toggle('open');
 }
 
 // fecha dropdown ao clicar fora
 document.addEventListener('click', (e) => {
-    document.querySelectorAll('.multi-select').forEach(ms => {
-        if (!ms.contains(e.target)) ms.classList.remove('open');
-    });
+  document.querySelectorAll('.multi-select').forEach(ms => {
+    if (!ms.contains(e.target)) ms.classList.remove('open');
+  });
 });
 
 function escapeHtml(str) {
-    return String(str)
-        .replaceAll('&', '&amp;')
-        .replaceAll('<', '&lt;')
-        .replaceAll('>', '&gt;')
-        .replaceAll('"', '&quot;')
-        .replaceAll("'", '&#039;');
+  return String(str)
+    .replaceAll('&', '&amp;')
+    .replaceAll('<', '&lt;')
+    .replaceAll('>', '&gt;')
+    .replaceAll('"', '&quot;')
+    .replaceAll("'", '&#039;');
 }
 
 function renderMultiSelect(panelId, values, onChange) {
-    const panel = document.getElementById(panelId);
-    panel.innerHTML = '';
+  const panel = document.getElementById(panelId);
+  panel.innerHTML = '';
 
-    const actions = document.createElement('div');
-    actions.className = 'ms-actions';
-    actions.innerHTML = `
-      <button type="button" class="ms-all">Marcar todos</button>
-      <button type="button" class="ms-none">Limpar</button>
+  const actions = document.createElement('div');
+  actions.className = 'ms-actions';
+  actions.innerHTML = `
+    <button type="button" class="ms-all">Marcar todos</button>
+    <button type="button" class="ms-none">Limpar</button>
+  `;
+  panel.appendChild(actions);
+
+  const btnAll = actions.querySelector('.ms-all');
+  const btnNone = actions.querySelector('.ms-none');
+
+  btnAll.addEventListener('click', () => {
+    panel.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
+    onChange();
+  });
+
+  btnNone.addEventListener('click', () => {
+    panel.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+    onChange();
+  });
+
+  values.forEach(v => {
+    const item = document.createElement('label');
+    item.className = 'ms-item';
+    item.innerHTML = `
+      <input type="checkbox" value="${escapeHtml(v)}">
+      <span>${escapeHtml(v)}</span>
     `;
-    panel.appendChild(actions);
-
-    const btnAll = actions.querySelector('.ms-all');
-    const btnNone = actions.querySelector('.ms-none');
-
-    btnAll.addEventListener('click', () => {
-        panel.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = true);
-        onChange();
-    });
-
-    btnNone.addEventListener('click', () => {
-        panel.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-        onChange();
-    });
-
-    values.forEach(v => {
-        const item = document.createElement('label');
-        item.className = 'ms-item';
-        item.innerHTML = `
-          <input type="checkbox" value="${escapeHtml(v)}">
-          <span>${escapeHtml(v)}</span>
-        `;
-        item.querySelector('input').addEventListener('change', onChange);
-        panel.appendChild(item);
-    });
+    item.querySelector('input').addEventListener('change', onChange);
+    panel.appendChild(item);
+  });
 }
 
 function getSelectedFromPanel(panelId) {
-    const panel = document.getElementById(panelId);
-    return [...panel.querySelectorAll('input[type="checkbox"]:checked')].map(cb => cb.value);
+  const panel = document.getElementById(panelId);
+  return [...panel.querySelectorAll('input[type="checkbox"]:checked')].map(cb => cb.value);
 }
 
 function setMultiSelectText(textId, selected, fallbackLabel) {
-    const el = document.getElementById(textId);
-    if (!selected || selected.length === 0) el.textContent = fallbackLabel;
-    else if (selected.length === 1) el.textContent = selected[0];
-    else el.textContent = `${selected.length} selecionados`;
+  const el = document.getElementById(textId);
+  if (!selected || selected.length === 0) el.textContent = fallbackLabel;
+  else if (selected.length === 1) el.textContent = selected[0];
+  else el.textContent = `${selected.length} selecionados`;
 }
 
 // ===================================
 // INICIALIZAÇÃO
 // ===================================
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('Iniciando carregamento de dados...');
-    loadData();
+document.addEventListener('DOMContentLoaded', function () {
+  console.log('Iniciando carregamento de dados...');
+  loadData();
 });
 
 // ===================================
 // ✅ CARREGAR DADOS DAS DUAS ABAS
 // ===================================
 async function loadData() {
-    showLoading(true);
-    allData = [];
-    
-    try {
-        console.log('Carregando dados das duas abas...');
+  showLoading(true);
+  allData = [];
 
-        const promises = SHEETS.map(sheet => 
-            fetch(sheet.url)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`Erro HTTP na aba "${sheet.name}": ${response.status}`);
-                    }
-                    return response.text();
-                })
-                .then(csvText => {
-                    console.log(`Dados CSV da aba "${sheet.name}" recebidos`);
-                    return { name: sheet.name, csv: csvText };
-                })
-        );
+  try {
+    console.log('Carregando dados das duas abas...');
 
-        const results = await Promise.all(promises);
+    const promises = SHEETS.map(sheet =>
+      fetch(sheet.url, { cache: 'no-store' })
+        .then(response => {
+          if (!response.ok) {
+            throw new Error(`Erro HTTP na aba "${sheet.name}": ${response.status}`);
+          }
+          return response.text();
+        })
+        .then(csvText => {
+          // remove BOM
+          csvText = csvText.replace(/^\uFEFF/, '');
 
-        results.forEach(result => {
-            const rows = parseCSV(result.csv);
+          // Se voltou HTML, normalmente é permissão/login
+          if (csvText.includes('<html') || csvText.includes('<!DOCTYPE')) {
+            throw new Error(
+              `Aba "${sheet.name}" retornou HTML (provável falta de permissão ou planilha não pública).`
+            );
+          }
 
-            if (rows.length < 2) {
-                console.warn(`Aba "${result.name}" está vazia ou sem dados`);
-                return;
-            }
+          console.log(`Dados CSV da aba "${sheet.name}" recebidos`);
+          return { name: sheet.name, csv: csvText };
+        })
+    );
 
-            const headers = rows[0];
-            console.log(`Cabeçalhos da aba "${result.name}":`, headers);
+    const results = await Promise.all(promises);
 
-            const sheetData = rows.slice(1)
-                .filter(row => row.length > 1 && row[0])
-                .map(row => {
-                    const obj = { _origem: result.name };
-                    headers.forEach((header, index) => {
-                        obj[header.trim()] = (row[index] || '').trim();
-                    });
-                    return obj;
-                });
+    results.forEach(result => {
+      const rows = parseCSV(result.csv);
 
-            console.log(`${sheetData.length} registros carregados da aba "${result.name}"`);
-            allData.push(...sheetData);
+      if (rows.length < 2) {
+        console.warn(`Aba "${result.name}" está vazia ou sem dados`);
+        return;
+      }
+
+      const headers = rows[0].map(h => (h || '').trim());
+      console.log(`Cabeçalhos da aba "${result.name}":`, headers);
+
+      const sheetData = rows.slice(1)
+        .filter(row => row.length > 1 && (row[0] || '').trim() !== '')
+        .map(row => {
+          const obj = { _origem: result.name };
+          headers.forEach((header, index) => {
+            if (!header) return;
+            obj[header] = (row[index] || '').trim();
+          });
+          return obj;
         });
 
-        console.log(`Total de registros carregados (ambas as abas): ${allData.length}`);
-        console.log('Primeiro registro completo:', allData[0]);
+      console.log(`${sheetData.length} registros carregados da aba "${result.name}"`);
+      allData.push(...sheetData);
+    });
 
-        if (allData.length === 0) {
-            throw new Error('Nenhum dado foi carregado das planilhas');
-        }
+    console.log(`Total de registros carregados (ambas as abas): ${allData.length}`);
+    console.log('Primeiro registro completo:', allData[0]);
 
-        filteredData = [...allData];
-
-        populateFilters();
-        updateDashboard();
-
-        console.log('Dados carregados com sucesso!');
-
-    } catch (error) {
-        console.error('Erro ao carregar dados:', error);
-        alert(`Erro ao carregar dados da planilha: ${error.message}\n\nVerifique:\n1. As planilhas estão públicas?\n2. Os nomes das abas estão corretos?\n3. Há dados nas planilhas?`);
-    } finally {
-        showLoading(false);
+    if (allData.length === 0) {
+      throw new Error('Nenhum dado foi carregado das planilhas');
     }
+
+    filteredData = [...allData];
+
+    populateFilters();
+    updateDashboard();
+
+    console.log('Dados carregados com sucesso!');
+
+  } catch (error) {
+    console.error('Erro ao carregar dados:', error);
+    alert(
+      `Erro ao carregar dados da planilha: ${error.message}\n\n` +
+      `Verifique:\n` +
+      `1. A planilha está com acesso "Qualquer pessoa com o link pode visualizar"? \n` +
+      `2. Os GIDs estão corretos (aba certa)?\n` +
+      `3. Há dados nas abas?\n`
+    );
+  } finally {
+    showLoading(false);
+  }
 }
 
 // ===================================
 // PARSE CSV (COM SUPORTE A ASPAS)
 // ===================================
 function parseCSV(text) {
-    const rows = [];
-    let currentRow = [];
-    let currentCell = '';
-    let insideQuotes = false;
+  const rows = [];
+  let currentRow = [];
+  let currentCell = '';
+  let insideQuotes = false;
 
-    for (let i = 0; i < text.length; i++) {
-        const char = text[i];
-        const nextChar = text[i + 1];
+  for (let i = 0; i < text.length; i++) {
+    const char = text[i];
+    const nextChar = text[i + 1];
 
-        if (char === '"') {
-            if (insideQuotes && nextChar === '"') {
-                currentCell += '"';
-                i++;
-            } else {
-                insideQuotes = !insideQuotes;
-            }
-        } else if (char === ',' && !insideQuotes) {
-            currentRow.push(currentCell.trim());
-            currentCell = '';
-        } else if ((char === '\n' || char === '\r') && !insideQuotes) {
-            if (currentCell || currentRow.length > 0) {
-                currentRow.push(currentCell.trim());
-                rows.push(currentRow);
-                currentRow = [];
-                currentCell = '';
-            }
-            if (char === '\r' && nextChar === '\n') {
-                i++;
-            }
-        } else {
-            currentCell += char;
-        }
-    }
-
-    if (currentCell || currentRow.length > 0) {
+    if (char === '"') {
+      if (insideQuotes && nextChar === '"') {
+        currentCell += '"';
+        i++;
+      } else {
+        insideQuotes = !insideQuotes;
+      }
+    } else if (char === ',' && !insideQuotes) {
+      currentRow.push(currentCell.trim());
+      currentCell = '';
+    } else if ((char === '\n' || char === '\r') && !insideQuotes) {
+      if (currentCell || currentRow.length > 0) {
         currentRow.push(currentCell.trim());
         rows.push(currentRow);
+        currentRow = [];
+        currentCell = '';
+      }
+      if (char === '\r' && nextChar === '\n') i++;
+    } else {
+      currentCell += char;
     }
+  }
 
-    return rows;
+  if (currentCell || currentRow.length > 0) {
+    currentRow.push(currentCell.trim());
+    rows.push(currentRow);
+  }
+
+  return rows;
 }
 
 // ===================================
 // MOSTRAR/OCULTAR LOADING
 // ===================================
 function showLoading(show) {
-    const overlay = document.getElementById('loadingOverlay');
-    if (show) overlay.classList.add('active');
-    else overlay.classList.remove('active');
+  const overlay = document.getElementById('loadingOverlay');
+  if (!overlay) return;
+  if (show) overlay.classList.add('active');
+  else overlay.classList.remove('active');
 }
 
 // ===================================
 // ✅ POPULAR FILTROS (MULTISELECT + MÊS)
 // ===================================
 function populateFilters() {
-    const statusList = [...new Set(allData.map(item => item['Status']))].filter(Boolean).sort();
-    renderMultiSelect('msStatusPanel', statusList, applyFilters);
+  const statusList = [...new Set(allData.map(item => item['Status']))].filter(Boolean).sort();
+  renderMultiSelect('msStatusPanel', statusList, applyFilters);
 
-    const unidades = [...new Set(allData.map(item => item['Unidade Solicitante']))].filter(Boolean).sort();
-    renderMultiSelect('msUnidadePanel', unidades, applyFilters);
+  const unidades = [...new Set(allData.map(item => item['Unidade Solicitante']))].filter(Boolean).sort();
+  renderMultiSelect('msUnidadePanel', unidades, applyFilters);
 
-    const especialidades = [...new Set(allData.map(item => item['Cbo Especialidade']))].filter(Boolean).sort();
-    renderMultiSelect('msEspecialidadePanel', especialidades, applyFilters);
+  const especialidades = [...new Set(allData.map(item => item['Cbo Especialidade']))].filter(Boolean).sort();
+  renderMultiSelect('msEspecialidadePanel', especialidades, applyFilters);
 
-    const prestadores = [...new Set(allData.map(item => item['Prestador']))].filter(Boolean).sort();
-    renderMultiSelect('msPrestadorPanel', prestadores, applyFilters);
+  const prestadores = [...new Set(allData.map(item => item['Prestador']))].filter(Boolean).sort();
+  renderMultiSelect('msPrestadorPanel', prestadores, applyFilters);
 
-    setMultiSelectText('msStatusText', [], 'Todos');
-    setMultiSelectText('msUnidadeText', [], 'Todas');
-    setMultiSelectText('msEspecialidadeText', [], 'Todas');
-    setMultiSelectText('msPrestadorText', [], 'Todos');
+  setMultiSelectText('msStatusText', [], 'Todos');
+  setMultiSelectText('msUnidadeText', [], 'Todas');
+  setMultiSelectText('msEspecialidadeText', [], 'Todas');
+  setMultiSelectText('msPrestadorText', [], 'Todos');
 
-    populateMonthFilter();
+  populateMonthFilter();
 }
 
 // ===================================
 // ✅ POPULAR FILTRO DE MÊS (MULTISELECT STYLE)
 // ===================================
 function populateMonthFilter() {
-    const mesesSet = new Set();
+  const mesesSet = new Set();
 
-    allData.forEach(item => {
-        const dataInicio = parseDate(getColumnValue(item, [
-            'Data Início da Pendência',
-            'Data Inicio da Pendencia',
-            'Data Início Pendência',
-            'Data Inicio Pendencia'
-        ]));
+  allData.forEach(item => {
+    const dataInicio = parseDate(getColumnValue(item, [
+      'Data Início da Pendência',
+      'Data Inicio da Pendencia',
+      'Data Início Pendência',
+      'Data Inicio Pendencia'
+    ]));
 
-        if (dataInicio) {
-            const mesAno = `${dataInicio.getFullYear()}-${String(dataInicio.getMonth() + 1).padStart(2, '0')}`;
-            mesesSet.add(mesAno);
-        }
-    });
+    if (dataInicio) {
+      const mesAno = `${dataInicio.getFullYear()}-${String(dataInicio.getMonth() + 1).padStart(2, '0')}`;
+      mesesSet.add(mesAno);
+    }
+  });
 
-    const mesesOrdenados = Array.from(mesesSet).sort().reverse();
-    const mesesFormatados = mesesOrdenados.map(mesAno => {
-        const [ano, mes] = mesAno.split('-');
-        const nomeMes = new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        return nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
-    });
+  const mesesOrdenados = Array.from(mesesSet).sort().reverse();
+  const mesesFormatados = mesesOrdenados.map(mesAno => {
+    const [ano, mes] = mesAno.split('-');
+    const nomeMes = new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+    return nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+  });
 
-    renderMultiSelect('msMesPanel', mesesFormatados, applyFilters);
-    setMultiSelectText('msMesText', [], 'Todos os Meses');
+  renderMultiSelect('msMesPanel', mesesFormatados, applyFilters);
+  setMultiSelectText('msMesText', [], 'Todos os Meses');
 }
 
 // ===================================
 // ✅ APLICAR FILTROS (MULTISELECT + MÊS)
 // ===================================
 function applyFilters() {
-    const statusSel = getSelectedFromPanel('msStatusPanel');
-    const unidadeSel = getSelectedFromPanel('msUnidadePanel');
-    const especialidadeSel = getSelectedFromPanel('msEspecialidadePanel');
-    const prestadorSel = getSelectedFromPanel('msPrestadorPanel');
-    const mesSel = getSelectedFromPanel('msMesPanel');
+  const statusSel = getSelectedFromPanel('msStatusPanel');
+  const unidadeSel = getSelectedFromPanel('msUnidadePanel');
+  const especialidadeSel = getSelectedFromPanel('msEspecialidadePanel');
+  const prestadorSel = getSelectedFromPanel('msPrestadorPanel');
+  const mesSel = getSelectedFromPanel('msMesPanel');
 
-    setMultiSelectText('msStatusText', statusSel, 'Todos');
-    setMultiSelectText('msUnidadeText', unidadeSel, 'Todas');
-    setMultiSelectText('msEspecialidadeText', especialidadeSel, 'Todas');
-    setMultiSelectText('msPrestadorText', prestadorSel, 'Todos');
-    setMultiSelectText('msMesText', mesSel, 'Todos os Meses');
+  setMultiSelectText('msStatusText', statusSel, 'Todos');
+  setMultiSelectText('msUnidadeText', unidadeSel, 'Todas');
+  setMultiSelectText('msEspecialidadeText', especialidadeSel, 'Todas');
+  setMultiSelectText('msPrestadorText', prestadorSel, 'Todos');
+  setMultiSelectText('msMesText', mesSel, 'Todos os Meses');
 
-    filteredData = allData.filter(item => {
-        const okStatus = (statusSel.length === 0) || statusSel.includes(item['Status'] || '');
-        const okUnidade = (unidadeSel.length === 0) || unidadeSel.includes(item['Unidade Solicitante'] || '');
-        const okEsp = (especialidadeSel.length === 0) || especialidadeSel.includes(item['Cbo Especialidade'] || '');
-        const okPrest = (prestadorSel.length === 0) || prestadorSel.includes(item['Prestador'] || '');
+  filteredData = allData.filter(item => {
+    const okStatus = (statusSel.length === 0) || statusSel.includes(item['Status'] || '');
+    const okUnidade = (unidadeSel.length === 0) || unidadeSel.includes(item['Unidade Solicitante'] || '');
+    const okEsp = (especialidadeSel.length === 0) || especialidadeSel.includes(item['Cbo Especialidade'] || '');
+    const okPrest = (prestadorSel.length === 0) || prestadorSel.includes(item['Prestador'] || '');
 
-        let okMes = true;
-        if (mesSel.length > 0) {
-            const dataInicio = parseDate(getColumnValue(item, [
-                'Data Início da Pendência',
-                'Data Inicio da Pendencia',
-                'Data Início Pendência',
-                'Data Inicio Pendencia'
-            ]));
-            if (dataInicio) {
-                const mesAno = `${dataInicio.getFullYear()}-${String(dataInicio.getMonth() + 1).padStart(2, '0')}`;
-                const [ano, mes] = mesAno.split('-');
-                const nomeMes = new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-                const mesFormatado = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
-                okMes = mesSel.includes(mesFormatado);
-            } else {
-                okMes = false;
-            }
-        }
+    let okMes = true;
+    if (mesSel.length > 0) {
+      const dataInicio = parseDate(getColumnValue(item, [
+        'Data Início da Pendência',
+        'Data Inicio da Pendencia',
+        'Data Início Pendência',
+        'Data Inicio Pendencia'
+      ]));
 
-        return okStatus && okUnidade && okEsp && okPrest && okMes;
-    });
+      if (dataInicio) {
+        const mesAno = `${dataInicio.getFullYear()}-${String(dataInicio.getMonth() + 1).padStart(2, '0')}`;
+        const [ano, mes] = mesAno.split('-');
+        const nomeMes = new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+        const mesFormatado = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+        okMes = mesSel.includes(mesFormatado);
+      } else {
+        okMes = false;
+      }
+    }
 
-    updateDashboard();
+    return okStatus && okUnidade && okEsp && okPrest && okMes;
+  });
+
+  updateDashboard();
 }
 
 // ===================================
 // ✅ LIMPAR FILTROS (MULTISELECT + MÊS)
 // ===================================
 function clearFilters() {
-    ['msStatusPanel','msUnidadePanel','msEspecialidadePanel','msPrestadorPanel','msMesPanel'].forEach(panelId => {
-        const panel = document.getElementById(panelId);
-        if (!panel) return;
-        panel.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
-    });
+  ['msStatusPanel', 'msUnidadePanel', 'msEspecialidadePanel', 'msPrestadorPanel', 'msMesPanel'].forEach(panelId => {
+    const panel = document.getElementById(panelId);
+    if (!panel) return;
+    panel.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
+  });
 
-    setMultiSelectText('msStatusText', [], 'Todos');
-    setMultiSelectText('msUnidadeText', [], 'Todas');
-    setMultiSelectText('msEspecialidadeText', [], 'Todas');
-    setMultiSelectText('msPrestadorText', [], 'Todos');
-    setMultiSelectText('msMesText', [], 'Todos os Meses');
+  setMultiSelectText('msStatusText', [], 'Todos');
+  setMultiSelectText('msUnidadeText', [], 'Todas');
+  setMultiSelectText('msEspecialidadeText', [], 'Todas');
+  setMultiSelectText('msPrestadorText', [], 'Todos');
+  setMultiSelectText('msMesText', [], 'Todos os Meses');
 
-    document.getElementById('searchInput').value = '';
+  const si = document.getElementById('searchInput');
+  if (si) si.value = '';
 
-    filteredData = [...allData];
-    updateDashboard();
+  filteredData = [...allData];
+  updateDashboard();
 }
 
 // ===================================
 // PESQUISAR NA TABELA
 // ===================================
 function searchTable() {
-    const searchValue = document.getElementById('searchInput').value.toLowerCase();
-    const tbody = document.getElementById('tableBody');
-    const rows = tbody.getElementsByTagName('tr');
+  const searchValue = (document.getElementById('searchInput')?.value || '').toLowerCase();
+  const tbody = document.getElementById('tableBody');
+  if (!tbody) return;
 
-    let visibleCount = 0;
+  const rows = tbody.getElementsByTagName('tr');
+  let visibleCount = 0;
 
-    for (let i = 0; i < rows.length; i++) {
-        const row = rows[i];
-        const cells = row.getElementsByTagName('td');
-        let found = false;
+  for (let i = 0; i < rows.length; i++) {
+    const row = rows[i];
+    const cells = row.getElementsByTagName('td');
+    let found = false;
 
-        for (let j = 0; j < cells.length; j++) {
-            const cellText = cells[j].textContent.toLowerCase();
-            if (cellText.includes(searchValue)) {
-                found = true;
-                break;
-            }
-        }
-
-        if (found) {
-            row.style.display = '';
-            visibleCount++;
-        } else {
-            row.style.display = 'none';
-        }
+    for (let j = 0; j < cells.length; j++) {
+      const cellText = (cells[j].textContent || '').toLowerCase();
+      if (cellText.includes(searchValue)) {
+        found = true;
+        break;
+      }
     }
 
-    const footer = document.getElementById('tableFooter');
-    footer.textContent = `Mostrando ${visibleCount} de ${filteredData.length} registros`;
+    row.style.display = found ? '' : 'none';
+    if (found) visibleCount++;
+  }
+
+  const footer = document.getElementById('tableFooter');
+  if (footer) footer.textContent = `Mostrando ${visibleCount} de ${filteredData.length} registros`;
 }
 
 // ===================================
 // ATUALIZAR DASHBOARD
 // ===================================
 function updateDashboard() {
-    updateCards();
-    updateCharts();
-    updateTable();
+  updateCards();
+  updateCharts();
+  updateTable();
 }
 
 // ===================================
 // ✅ ATUALIZAR CARDS (CONTANDO POR "USUÁRIO" PREENCHIDO)
 // ===================================
 function updateCards() {
-    const total = allData.length;
-    const filtrado = filteredData.length;
+  const total = allData.length;
+  const filtrado = filteredData.length;
 
-    const hoje = new Date();
-    let pendencias15 = 0;
-    let pendencias30 = 0;
+  const hoje = new Date();
+  let pendencias15 = 0;
+  let pendencias30 = 0;
 
-    filteredData.forEach(item => {
-        if (!isPendenciaByUsuario(item)) return;
+  filteredData.forEach(item => {
+    if (!isPendenciaByUsuario(item)) return;
 
-        const dataInicio = parseDate(getColumnValue(item, [
-            'Data Início da Pendência',
-            'Data Inicio da Pendencia',
-            'Data Início Pendência',
-            'Data Inicio Pendencia'
-        ]));
+    const dataInicio = parseDate(getColumnValue(item, [
+      'Data Início da Pendência',
+      'Data Inicio da Pendencia',
+      'Data Início Pendência',
+      'Data Inicio Pendencia'
+    ]));
 
-        if (dataInicio) {
-            const diasDecorridos = Math.floor((hoje - dataInicio) / (1000 * 60 * 60 * 24));
-            if (diasDecorridos >= 15 && diasDecorridos < 30) pendencias15++;
-            if (diasDecorridos >= 30) pendencias30++;
-        }
-    });
+    if (dataInicio) {
+      const diasDecorridos = Math.floor((hoje - dataInicio) / (1000 * 60 * 60 * 24));
+      if (diasDecorridos >= 15 && diasDecorridos < 30) pendencias15++;
+      if (diasDecorridos >= 30) pendencias30++;
+    }
+  });
 
-    document.getElementById('totalPendencias').textContent = total;
-    document.getElementById('pendencias15').textContent = pendencias15;
-    document.getElementById('pendencias30').textContent = pendencias30;
+  document.getElementById('totalPendencias').textContent = total;
+  document.getElementById('pendencias15').textContent = pendencias15;
+  document.getElementById('pendencias30').textContent = pendencias30;
 
-    const percentFiltrados = total > 0 ? ((filtrado / total) * 100).toFixed(1) : '100.0';
-    document.getElementById('percentFiltrados').textContent = percentFiltrados + '%';
+  const percentFiltrados = total > 0 ? ((filtrado / total) * 100).toFixed(1) : '100.0';
+  document.getElementById('percentFiltrados').textContent = percentFiltrados + '%';
 }
 
 // ===================================
 // ✅ ATUALIZAR GRÁFICOS
 // ===================================
 function updateCharts() {
-    // ✅ NOVO: PENDÊNCIAS NÃO RESOLVIDAS POR UNIDADE (APENAS ABA "PENDÊNCIAS ELDORADO")
-    const pendenciasNaoResolvidasUnidade = {};
-    filteredData.forEach(item => {
-        if (item['_origem'] !== 'PENDÊNCIAS ELDORADO') return;
-        if (!isPendenciaByUsuario(item)) return;
-        
-        const unidade = item['Unidade Solicitante'] || 'Não informado';
-        pendenciasNaoResolvidasUnidade[unidade] = (pendenciasNaoResolvidasUnidade[unidade] || 0) + 1;
-    });
+  // ✅ PENDÊNCIAS NÃO RESOLVIDAS POR UNIDADE (APENAS ABA "PENDÊNCIAS ELDORADO")
+  const pendenciasNaoResolvidasUnidade = {};
+  filteredData.forEach(item => {
+    if (item['_origem'] !== 'PENDÊNCIAS ELDORADO') return;
+    if (!isPendenciaByUsuario(item)) return;
 
-    const pendenciasNRLabels = Object.keys(pendenciasNaoResolvidasUnidade)
-        .sort((a, b) => pendenciasNaoResolvidasUnidade[b] - pendenciasNaoResolvidasUnidade[a])
-        .slice(0, 50);
-    const pendenciasNRValues = pendenciasNRLabels.map(label => pendenciasNaoResolvidasUnidade[label]);
+    const unidade = item['Unidade Solicitante'] || 'Não informado';
+    pendenciasNaoResolvidasUnidade[unidade] = (pendenciasNaoResolvidasUnidade[unidade] || 0) + 1;
+  });
 
-    createHorizontalBarChart('chartPendenciasNaoResolvidasUnidade', pendenciasNRLabels, pendenciasNRValues, '#065f46');
+  const pendenciasNRLabels = Object.keys(pendenciasNaoResolvidasUnidade)
+    .sort((a, b) => pendenciasNaoResolvidasUnidade[b] - pendenciasNaoResolvidasUnidade[a])
+    .slice(0, 50);
+  const pendenciasNRValues = pendenciasNRLabels.map(label => pendenciasNaoResolvidasUnidade[label]);
 
-    // Gráfico de Unidades
-    const unidadesCount = {};
-    filteredData.forEach(item => {
-        if (!isPendenciaByUsuario(item)) return;
-        const unidade = item['Unidade Solicitante'] || 'Não informado';
-        unidadesCount[unidade] = (unidadesCount[unidade] || 0) + 1;
-    });
+  createHorizontalBarChart('chartPendenciasNaoResolvidasUnidade', pendenciasNRLabels, pendenciasNRValues, '#065f46');
 
-    const unidadesLabels = Object.keys(unidadesCount)
-        .sort((a, b) => unidadesCount[b] - unidadesCount[a])
-        .slice(0, 50);
-    const unidadesValues = unidadesLabels.map(label => unidadesCount[label]);
+  // Gráfico de Unidades
+  const unidadesCount = {};
+  filteredData.forEach(item => {
+    if (!isPendenciaByUsuario(item)) return;
+    const unidade = item['Unidade Solicitante'] || 'Não informado';
+    unidadesCount[unidade] = (unidadesCount[unidade] || 0) + 1;
+  });
 
-    createHorizontalBarChart('chartUnidades', unidadesLabels, unidadesValues, '#48bb78');
+  const unidadesLabels = Object.keys(unidadesCount)
+    .sort((a, b) => unidadesCount[b] - unidadesCount[a])
+    .slice(0, 50);
+  const unidadesValues = unidadesLabels.map(label => unidadesCount[label]);
 
-    // Gráfico de Especialidades
-    const especialidadesCount = {};
-    filteredData.forEach(item => {
-        if (!isPendenciaByUsuario(item)) return;
-        const especialidade = item['Cbo Especialidade'] || 'Não informado';
-        especialidadesCount[especialidade] = (especialidadesCount[especialidade] || 0) + 1;
-    });
+  createHorizontalBarChart('chartUnidades', unidadesLabels, unidadesValues, '#48bb78');
 
-    const especialidadesLabels = Object.keys(especialidadesCount)
-        .sort((a, b) => especialidadesCount[b] - especialidadesCount[a])
-        .slice(0, 50);
-    const especialidadesValues = especialidadesLabels.map(label => especialidadesCount[label]);
+  // Gráfico de Especialidades
+  const especialidadesCount = {};
+  filteredData.forEach(item => {
+    if (!isPendenciaByUsuario(item)) return;
+    const especialidade = item['Cbo Especialidade'] || 'Não informado';
+    especialidadesCount[especialidade] = (especialidadesCount[especialidade] || 0) + 1;
+  });
 
-    createHorizontalBarChart('chartEspecialidades', especialidadesLabels, especialidadesValues, '#ef4444');
+  const especialidadesLabels = Object.keys(especialidadesCount)
+    .sort((a, b) => especialidadesCount[b] - especialidadesCount[a])
+    .slice(0, 50);
+  const especialidadesValues = especialidadesLabels.map(label => especialidadesCount[label]);
 
-    // Gráfico de Status
-    const statusCount = {};
-    filteredData.forEach(item => {
-        const status = item['Status'] || 'Não informado';
-        statusCount[status] = (statusCount[status] || 0) + 1;
-    });
+  createHorizontalBarChart('chartEspecialidades', especialidadesLabels, especialidadesValues, '#ef4444');
 
-    const statusLabels = Object.keys(statusCount)
-        .sort((a, b) => statusCount[b] - statusCount[a]);
-    const statusValues = statusLabels.map(label => statusCount[label]);
+  // Gráfico de Status
+  const statusCount = {};
+  filteredData.forEach(item => {
+    const status = item['Status'] || 'Não informado';
+    statusCount[status] = (statusCount[status] || 0) + 1;
+  });
 
-    createVerticalBarChart('chartStatus', statusLabels, statusValues, '#f97316');
+  const statusLabels = Object.keys(statusCount)
+    .sort((a, b) => statusCount[b] - statusCount[a]);
+  const statusValues = statusLabels.map(label => statusCount[label]);
 
-    // Gráfico de Pizza
-    createPieChart('chartPizzaStatus', statusLabels, statusValues);
+  createVerticalBarChart('chartStatus', statusLabels, statusValues, '#f97316');
 
-    // Pendências por Prestador
-    const prestadorCount = {};
-    filteredData.forEach(item => {
-        if (!isPendenciaByUsuario(item)) return;
-        const prest = item['Prestador'] || 'Não informado';
-        prestadorCount[prest] = (prestadorCount[prest] || 0) + 1;
-    });
+  // Gráfico de Pizza
+  createPieChart('chartPizzaStatus', statusLabels, statusValues);
 
-    const prestLabels = Object.keys(prestadorCount)
-        .sort((a, b) => prestadorCount[b] - prestadorCount[a])
-        .slice(0, 50);
-    const prestValues = prestLabels.map(l => prestadorCount[l]);
+  // Pendências por Prestador
+  const prestadorCount = {};
+  filteredData.forEach(item => {
+    if (!isPendenciaByUsuario(item)) return;
+    const prest = item['Prestador'] || 'Não informado';
+    prestadorCount[prest] = (prestadorCount[prest] || 0) + 1;
+  });
 
-    createVerticalBarChartCenteredValue(
-        'chartPendenciasPrestador',
-        prestLabels,
-        prestValues,
-        '#4c1d95'
-    );
+  const prestLabels = Object.keys(prestadorCount)
+    .sort((a, b) => prestadorCount[b] - prestadorCount[a])
+    .slice(0, 50);
+  const prestValues = prestLabels.map(l => prestadorCount[l]);
 
-    // Pendências por Mês
-    const mesCount = {};
-    filteredData.forEach(item => {
-        if (!isPendenciaByUsuario(item)) return;
+  createVerticalBarChartCenteredValue('chartPendenciasPrestador', prestLabels, prestValues, '#4c1d95');
 
-        const dataInicio = parseDate(getColumnValue(item, [
-            'Data Início da Pendência',
-            'Data Inicio da Pendencia',
-            'Data Início Pendência',
-            'Data Inicio Pendencia'
-        ]));
+  // Pendências por Mês
+  const mesCount = {};
+  filteredData.forEach(item => {
+    if (!isPendenciaByUsuario(item)) return;
 
-        let chave = 'Não informado';
-        if (dataInicio) {
-            const mesAno = `${dataInicio.getFullYear()}-${String(dataInicio.getMonth() + 1).padStart(2, '0')}`;
-            const [ano, mes] = mesAno.split('-');
-            const nomeMes = new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-            chave = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
-        }
+    const dataInicio = parseDate(getColumnValue(item, [
+      'Data Início da Pendência',
+      'Data Inicio da Pendencia',
+      'Data Início Pendência',
+      'Data Inicio Pendencia'
+    ]));
 
-        mesCount[chave] = (mesCount[chave] || 0) + 1;
-    });
+    let chave = 'Não informado';
+    if (dataInicio) {
+      const mesAno = `${dataInicio.getFullYear()}-${String(dataInicio.getMonth() + 1).padStart(2, '0')}`;
+      const [ano, mes] = mesAno.split('-');
+      const nomeMes = new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+      chave = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+    }
 
-    const mesLabels = Object.keys(mesCount)
-        .sort((a, b) => mesCount[b] - mesCount[a])
-        .slice(0, 50);
-    const mesValues = mesLabels.map(l => mesCount[l]);
+    mesCount[chave] = (mesCount[chave] || 0) + 1;
+  });
 
-    createVerticalBarChartCenteredValue(
-        'chartPendenciasMes',
-        mesLabels,
-        mesValues,
-        '#0b2a6f'
-    );
+  const mesLabels = Object.keys(mesCount)
+    .sort((a, b) => mesCount[b] - mesCount[a])
+    .slice(0, 50);
+  const mesValues = mesLabels.map(l => mesCount[l]);
 
-    // ✅ NOVO: RESOLUTIVIDADE POR UNIDADE
-    createResolutividadeChart('chartResolutividadeUnidade', 'Unidade Solicitante');
+  createVerticalBarChartCenteredValue('chartPendenciasMes', mesLabels, mesValues, '#0b2a6f');
 
-    // ✅ NOVO: RESOLUTIVIDADE POR PRESTADOR
-    createResolutividadeChart('chartResolutividadePrestador', 'Prestador');
+  // ✅ RESOLUTIVIDADE
+  createResolutividadeChart('chartResolutividadeUnidade', 'Unidade Solicitante');
+  createResolutividadeChart('chartResolutividadePrestador', 'Prestador');
 }
 
 // ===================================
 // ✅ CRIAR GRÁFICO DE RESOLUTIVIDADE (HORIZONTAL COM %)
 // ===================================
 function createResolutividadeChart(canvasId, fieldName) {
-    const ctx = document.getElementById(canvasId);
-    
-    if (canvasId === 'chartResolutividadeUnidade' && chartResolutividadeUnidade) {
-        chartResolutividadeUnidade.destroy();
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
+
+  if (canvasId === 'chartResolutividadeUnidade' && chartResolutividadeUnidade) chartResolutividadeUnidade.destroy();
+  if (canvasId === 'chartResolutividadePrestador' && chartResolutividadePrestador) chartResolutividadePrestador.destroy();
+
+  const stats = {};
+
+  allData.forEach(item => {
+    if (!isPendenciaByUsuario(item)) return;
+
+    const valor = item[fieldName] || 'Não informado';
+    if (!stats[valor]) stats[valor] = { total: 0, resolvidos: 0 };
+
+    stats[valor].total++;
+
+    // ✅ CORREÇÃO: _origem é "RESOLVIDOS ELDORADO" (ou contém "RESOLVIDOS")
+    if ((item['_origem'] || '').toUpperCase().includes('RESOLVIDOS')) {
+      stats[valor].resolvidos++;
     }
-    if (canvasId === 'chartResolutividadePrestador' && chartResolutividadePrestador) {
-        chartResolutividadePrestador.destroy();
-    }
+  });
 
-    // Calcular resolutividade
-    const stats = {};
+  const data = Object.keys(stats).map(key => ({
+    label: key,
+    total: stats[key].total,
+    resolvidos: stats[key].resolvidos,
+    taxa: stats[key].total > 0 ? (stats[key].resolvidos / stats[key].total * 100) : 0
+  }));
 
-    allData.forEach(item => {
-        if (!isPendenciaByUsuario(item)) return;
-        
-        const valor = item[fieldName] || 'Não informado';
-        if (!stats[valor]) {
-            stats[valor] = { total: 0, resolvidos: 0 };
-        }
-        
-        stats[valor].total++;
-        if (item['_origem'] === 'RESOLVIDOS') {
-            stats[valor].resolvidos++;
-        }
-    });
+  data.sort((a, b) => b.taxa - a.taxa);
 
-    // Calcular taxa de resolutividade
-    const data = Object.keys(stats).map(key => ({
-        label: key,
-        total: stats[key].total,
-        resolvidos: stats[key].resolvidos,
-        taxa: stats[key].total > 0 ? (stats[key].resolvidos / stats[key].total * 100) : 0
-    }));
+  const top10 = data.slice(0, 10);
+  const labels = top10.map(d => d.label);
+  const taxas = top10.map(d => d.taxa);
 
-    // Ordenar por taxa decrescente
-    data.sort((a, b) => b.taxa - a.taxa);
-
-    // Top 10
-    const top10 = data.slice(0, 10);
-    const labels = top10.map(d => d.label);
-    const taxas = top10.map(d => d.taxa);
-
-    const chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Taxa de Resolutividade (%)',
-                data: taxas,
-                backgroundColor: '#10b981',
-                borderWidth: 0,
-                borderRadius: 4,
-                barPercentage: 0.75,
-                categoryPercentage: 0.85
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 },
-                    padding: 12,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            const index = context.dataIndex;
-                            const item = top10[index];
-                            return [
-                                `Taxa: ${item.taxa.toFixed(1)}%`,
-                                `Resolvidos: ${item.resolvidos}`,
-                                `Total: ${item.total}`
-                            ];
-                        }
-                    }
-                }
-            },
-            scales: {
-                x: { 
-                    display: true,
-                    max: 100,
-                    grid: { display: true, color: 'rgba(0,0,0,0.05)' },
-                    ticks: {
-                        callback: function(value) {
-                            return value + '%';
-                        }
-                    }
-                },
-                y: {
-                    ticks: {
-                        font: { size: 12, weight: '500' },
-                        color: '#4a5568',
-                        padding: 8
-                    },
-                    grid: { display: false }
-                }
-            },
-            layout: { padding: { right: 60 } }
-        },
-        plugins: [{
-            id: 'resolutividadeLabels',
-            afterDatasetsDraw: function(chart) {
-                const ctx = chart.ctx;
-                chart.data.datasets.forEach(function(dataset, i) {
-                    const meta = chart.getDatasetMeta(i);
-                    if (!meta.hidden) {
-                        meta.data.forEach(function(element, index) {
-                            ctx.fillStyle = '#000000';
-                            ctx.font = 'bold 13px Arial';
-                            ctx.textAlign = 'left';
-                            ctx.textBaseline = 'middle';
-
-                            const taxa = dataset.data[index];
-                            const item = top10[index];
-                            const texto = `${taxa.toFixed(1)}% (${item.resolvidos}/${item.total})`;
-                            const xPos = element.x + 10;
-                            const yPos = element.y;
-
-                            ctx.fillText(texto, xPos, yPos);
-                        });
-                    }
-                });
+  const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Taxa de Resolutividade (%)',
+        data: taxas,
+        backgroundColor: '#10b981',
+        borderWidth: 0,
+        borderRadius: 4,
+        barPercentage: 0.75,
+        categoryPercentage: 0.85
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleFont: { size: 14, weight: 'bold' },
+          bodyFont: { size: 13 },
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: function (context) {
+              const index = context.dataIndex;
+              const item = top10[index];
+              return [
+                `Taxa: ${item.taxa.toFixed(1)}%`,
+                `Resolvidos: ${item.resolvidos}`,
+                `Total: ${item.total}`
+              ];
             }
-        }]
-    });
+          }
+        }
+      },
+      scales: {
+        x: {
+          display: true,
+          max: 100,
+          grid: { display: true, color: 'rgba(0,0,0,0.05)' },
+          ticks: {
+            callback: function (value) { return value + '%'; }
+          }
+        },
+        y: {
+          ticks: {
+            font: { size: 12, weight: '500' },
+            color: '#4a5568',
+            padding: 8
+          },
+          grid: { display: false }
+        }
+      },
+      layout: { padding: { right: 60 } }
+    },
+    plugins: [{
+      id: 'resolutividadeLabels',
+      afterDatasetsDraw: function (chart) {
+        const ctx = chart.ctx;
+        chart.data.datasets.forEach(function (dataset, i) {
+          const meta = chart.getDatasetMeta(i);
+          if (!meta.hidden) {
+            meta.data.forEach(function (element, index) {
+              ctx.fillStyle = '#000000';
+              ctx.font = 'bold 13px Arial';
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
 
-    if (canvasId === 'chartResolutividadeUnidade') chartResolutividadeUnidade = chart;
-    if (canvasId === 'chartResolutividadePrestador') chartResolutividadePrestador = chart;
+              const taxa = dataset.data[index];
+              const item = top10[index];
+              const texto = `${taxa.toFixed(1)}% (${item.resolvidos}/${item.total})`;
+              const xPos = element.x + 10;
+              const yPos = element.y;
+
+              ctx.fillText(texto, xPos, yPos);
+            });
+          }
+        });
+      }
+    }]
+  });
+
+  if (canvasId === 'chartResolutividadeUnidade') chartResolutividadeUnidade = chart;
+  if (canvasId === 'chartResolutividadePrestador') chartResolutividadePrestador = chart;
 }
 
 // ===================================
 // CRIAR GRÁFICO DE BARRAS HORIZONTAIS
 // ===================================
 function createHorizontalBarChart(canvasId, labels, data, color) {
-    const ctx = document.getElementById(canvasId);
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
 
-    if (canvasId === 'chartPendenciasNaoResolvidasUnidade' && chartPendenciasNaoResolvidasUnidade) {
-        chartPendenciasNaoResolvidasUnidade.destroy();
-    }
-    if (canvasId === 'chartUnidades' && chartUnidades) chartUnidades.destroy();
-    if (canvasId === 'chartEspecialidades' && chartEspecialidades) chartEspecialidades.destroy();
+  if (canvasId === 'chartPendenciasNaoResolvidasUnidade' && chartPendenciasNaoResolvidasUnidade) chartPendenciasNaoResolvidasUnidade.destroy();
+  if (canvasId === 'chartUnidades' && chartUnidades) chartUnidades.destroy();
+  if (canvasId === 'chartEspecialidades' && chartEspecialidades) chartEspecialidades.destroy();
 
-    const chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'Quantidade',
-                data: data,
-                backgroundColor: color,
-                borderWidth: 0,
-                borderRadius: 4,
-                barPercentage: 0.75,
-                categoryPercentage: 0.85
-            }]
-        },
-        options: {
-            indexAxis: 'y',
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 },
-                    padding: 12,
-                    cornerRadius: 8
-                }
-            },
-            scales: {
-                x: { display: false, grid: { display: false } },
-                y: {
-                    ticks: {
-                        font: { size: 12, weight: '500' },
-                        color: '#4a5568',
-                        padding: 8
-                    },
-                    grid: { display: false }
-                }
-            },
-            layout: { padding: { right: 50 } }
-        },
-        plugins: [{
-            id: 'customLabels',
-            afterDatasetsDraw: function(chart) {
-                const ctx = chart.ctx;
-                chart.data.datasets.forEach(function(dataset, i) {
-                    const meta = chart.getDatasetMeta(i);
-                    if (!meta.hidden) {
-                        meta.data.forEach(function(element, index) {
-                            ctx.fillStyle = '#000000';
-                            ctx.font = 'bold 14px Arial';
-                            ctx.textAlign = 'left';
-                            ctx.textBaseline = 'middle';
+  const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels: labels,
+      datasets: [{
+        label: 'Quantidade',
+        data: data,
+        backgroundColor: color,
+        borderWidth: 0,
+        borderRadius: 4,
+        barPercentage: 0.75,
+        categoryPercentage: 0.85
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleFont: { size: 14, weight: 'bold' },
+          bodyFont: { size: 13 },
+          padding: 12,
+          cornerRadius: 8
+        }
+      },
+      scales: {
+        x: { display: false, grid: { display: false } },
+        y: {
+          ticks: { font: { size: 12, weight: '500' }, color: '#4a5568', padding: 8 },
+          grid: { display: false }
+        }
+      },
+      layout: { padding: { right: 50 } }
+    },
+    plugins: [{
+      id: 'customLabels',
+      afterDatasetsDraw: function (chart) {
+        const ctx = chart.ctx;
+        chart.data.datasets.forEach(function (dataset, i) {
+          const meta = chart.getDatasetMeta(i);
+          if (!meta.hidden) {
+            meta.data.forEach(function (element, index) {
+              ctx.fillStyle = '#000000';
+              ctx.font = 'bold 14px Arial';
+              ctx.textAlign = 'left';
+              ctx.textBaseline = 'middle';
+              const dataString = dataset.data[index].toString();
+              const xPos = element.x + 10;
+              const yPos = element.y;
+              ctx.fillText(dataString, xPos, yPos);
+            });
+          }
+        });
+      }
+    }]
+  });
 
-                            const dataString = dataset.data[index].toString();
-                            const xPos = element.x + 10;
-                            const yPos = element.y;
-
-                            ctx.fillText(dataString, xPos, yPos);
-                        });
-                    }
-                });
-            }
-        }]
-    });
-
-    if (canvasId === 'chartPendenciasNaoResolvidasUnidade') chartPendenciasNaoResolvidasUnidade = chart;
-    if (canvasId === 'chartUnidades') chartUnidades = chart;
-    if (canvasId === 'chartEspecialidades') chartEspecialidades = chart;
+  if (canvasId === 'chartPendenciasNaoResolvidasUnidade') chartPendenciasNaoResolvidasUnidade = chart;
+  if (canvasId === 'chartUnidades') chartUnidades = chart;
+  if (canvasId === 'chartEspecialidades') chartEspecialidades = chart;
 }
 
 // ===================================
 // GRÁFICO VERTICAL COM VALOR NO MEIO DA BARRA
 // ===================================
 function createVerticalBarChartCenteredValue(canvasId, labels, data, color) {
-    const ctx = document.getElementById(canvasId);
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
 
-    if (canvasId === 'chartPendenciasPrestador' && chartPendenciasPrestador) chartPendenciasPrestador.destroy();
-    if (canvasId === 'chartPendenciasMes' && chartPendenciasMes) chartPendenciasMes.destroy();
+  if (canvasId === 'chartPendenciasPrestador' && chartPendenciasPrestador) chartPendenciasPrestador.destroy();
+  if (canvasId === 'chartPendenciasMes' && chartPendenciasMes) chartPendenciasMes.destroy();
 
-    const chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Quantidade',
-                data,
-                backgroundColor: color,
-                borderWidth: 0,
-                borderRadius: 6,
-                barPercentage: 0.70,
-                categoryPercentage: 0.75,
-                maxBarThickness: 40
-            }]
+  const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Quantidade',
+        data,
+        backgroundColor: color,
+        borderWidth: 0,
+        borderRadius: 6,
+        barPercentage: 0.70,
+        categoryPercentage: 0.75,
+        maxBarThickness: 40
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          titleFont: { size: 14, weight: 'bold' },
+          bodyFont: { size: 13 },
+          padding: 12,
+          cornerRadius: 8
+        }
+      },
+      scales: {
+        x: {
+          ticks: { font: { size: 12, weight: '600' }, color: '#4a5568', maxRotation: 45, minRotation: 0 },
+          grid: { display: false }
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: 'rgba(0,0,0,0.85)',
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 },
-                    padding: 12,
-                    cornerRadius: 8
-                }
-            },
-            scales: {
-                x: {
-                    ticks: {
-                        font: { size: 12, weight: '600' },
-                        color: '#4a5568',
-                        maxRotation: 45,
-                        minRotation: 0
-                    },
-                    grid: { display: false }
-                },
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        font: { size: 12, weight: '600' },
-                        color: '#4a5568'
-                    },
-                    grid: { color: 'rgba(0,0,0,0.06)' }
-                }
-            }
-        },
-        plugins: [{
-            id: 'centerValueInsideVerticalBar',
-            afterDatasetsDraw(chart) {
-                const { ctx } = chart;
-                const meta = chart.getDatasetMeta(0);
-                const dataset = chart.data.datasets[0];
+        y: {
+          beginAtZero: true,
+          ticks: { font: { size: 12, weight: '600' }, color: '#4a5568' },
+          grid: { color: 'rgba(0,0,0,0.06)' }
+        }
+      }
+    },
+    plugins: [{
+      id: 'centerValueInsideVerticalBar',
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        const meta = chart.getDatasetMeta(0);
+        const dataset = chart.data.datasets[0];
 
-                ctx.save();
-                ctx.fillStyle = '#FFFFFF';
-                ctx.font = 'bold 14px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
+        ctx.save();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
 
-                meta.data.forEach((bar, i) => {
-                    const value = dataset.data[i];
-                    const centerX = bar.x;
-                    const centerY = bar.y + (bar.height / 2);
-                    ctx.fillText(String(value), centerX, centerY);
-                });
+        meta.data.forEach((bar, i) => {
+          const value = dataset.data[i];
+          const centerX = bar.x;
+          const centerY = bar.y + (bar.height / 2);
+          ctx.fillText(String(value), centerX, centerY);
+        });
 
-                ctx.restore();
-            }
-        }]
-    });
+        ctx.restore();
+      }
+    }]
+  });
 
-    if (canvasId === 'chartPendenciasPrestador') chartPendenciasPrestador = chart;
-    if (canvasId === 'chartPendenciasMes') chartPendenciasMes = chart;
+  if (canvasId === 'chartPendenciasPrestador') chartPendenciasPrestador = chart;
+  if (canvasId === 'chartPendenciasMes') chartPendenciasMes = chart;
 }
 
 // ===================================
 // CRIAR GRÁFICO DE BARRAS VERTICAIS (STATUS)
 // ===================================
 function createVerticalBarChart(canvasId, labels, data, color) {
-    const ctx = document.getElementById(canvasId);
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
 
-    if (chartStatus) chartStatus.destroy();
+  if (chartStatus) chartStatus.destroy();
 
-    const chart = new Chart(ctx, {
-        type: 'bar',
-        data: {
-            labels,
-            datasets: [{
-                label: 'Quantidade',
-                data,
-                backgroundColor: color,
-                borderWidth: 0,
-                borderRadius: 6,
-                barPercentage: 0.55,
-                categoryPercentage: 0.70,
-                maxBarThickness: 28
-            }]
+  const chart = new Chart(ctx, {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Quantidade',
+        data,
+        backgroundColor: color,
+        borderWidth: 0,
+        borderRadius: 6,
+        barPercentage: 0.55,
+        categoryPercentage: 0.70,
+        maxBarThickness: 28
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(0,0,0,0.85)',
+          titleFont: { size: 14, weight: 'bold' },
+          bodyFont: { size: 13 },
+          padding: 12,
+          cornerRadius: 8
+        }
+      },
+      scales: {
+        x: {
+          ticks: { font: { size: 12, weight: '600' }, color: '#4a5568', maxRotation: 45, minRotation: 0 },
+          grid: { display: false }
         },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: { display: false },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: 'rgba(0,0,0,0.85)',
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 },
-                    padding: 12,
-                    cornerRadius: 8
-                }
-            },
-            scales: {
-                x: {
-                    ticks: {
-                        font: { size: 12, weight: '600' },
-                        color: '#4a5568',
-                        maxRotation: 45,
-                        minRotation: 0
-                    },
-                    grid: { display: false }
-                },
-                y: {
-                    beginAtZero: true,
-                    ticks: {
-                        font: { size: 12, weight: '600' },
-                        color: '#4a5568'
-                    },
-                    grid: { color: 'rgba(0,0,0,0.06)' }
-                }
-            }
-        },
-        plugins: [{
-            id: 'statusValueLabelsInsideBar',
-            afterDatasetsDraw(chart) {
-                const { ctx } = chart;
-                const meta = chart.getDatasetMeta(0);
-                const dataset = chart.data.datasets[0];
+        y: {
+          beginAtZero: true,
+          ticks: { font: { size: 12, weight: '600' }, color: '#4a5568' },
+          grid: { color: 'rgba(0,0,0,0.06)' }
+        }
+      }
+    },
+    plugins: [{
+      id: 'statusValueLabelsInsideBar',
+      afterDatasetsDraw(chart) {
+        const { ctx } = chart;
+        const meta = chart.getDatasetMeta(0);
+        const dataset = chart.data.datasets[0];
 
-                ctx.save();
-                ctx.fillStyle = '#FFFFFF';
-                ctx.font = 'bold 16px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
+        ctx.save();
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 16px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
 
-                meta.data.forEach((bar, i) => {
-                    const value = dataset.data[i];
-                    const yPos = bar.y + (bar.height / 2);
-                    ctx.fillText(String(value), bar.x, yPos);
-                });
+        meta.data.forEach((bar, i) => {
+          const value = dataset.data[i];
+          const yPos = bar.y + (bar.height / 2);
+          ctx.fillText(String(value), bar.x, yPos);
+        });
 
-                ctx.restore();
-            }
-        }]
-    });
+        ctx.restore();
+      }
+    }]
+  });
 
-    chartStatus = chart;
+  chartStatus = chart;
 }
 
 // ===================================
 // CRIAR GRÁFICO DE PIZZA
 // ===================================
 function createPieChart(canvasId, labels, data) {
-    const ctx = document.getElementById(canvasId);
+  const ctx = document.getElementById(canvasId);
+  if (!ctx) return;
 
-    if (chartPizzaStatus) chartPizzaStatus.destroy();
+  if (chartPizzaStatus) chartPizzaStatus.destroy();
 
-    const colors = [
-        '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
-        '#ec4899', '#06b6d4', '#f97316', '#6366f1', '#84cc16'
-    ];
+  const colors = [
+    '#3b82f6', '#ef4444', '#10b981', '#f59e0b', '#8b5cf6',
+    '#ec4899', '#06b6d4', '#f97316', '#6366f1', '#84cc16'
+  ];
 
-    const total = data.reduce((sum, val) => sum + val, 0);
+  const total = data.reduce((sum, val) => sum + val, 0);
 
-    chartPizzaStatus = new Chart(ctx, {
-        type: 'pie',
-        data: {
-            labels: labels,
-            datasets: [{
-                data: data,
-                backgroundColor: colors.slice(0, labels.length),
-                borderWidth: 3,
-                borderColor: '#ffffff'
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: {
-                legend: {
-                    display: true,
-                    position: 'right',
-                    labels: {
-                        font: { 
-                            size: 14,
-                            weight: 'bold',
-                            family: 'Arial, sans-serif'
-                        },
-                        color: '#000000',
-                        padding: 15,
-                        usePointStyle: true,
-                        pointStyle: 'circle',
-                        boxWidth: 20,
-                        boxHeight: 20,
-                        generateLabels: function(chart) {
-                            const datasets = chart.data.datasets;
-                            const labels = chart.data.labels;
-                            
-                            return labels.map((label, i) => {
-                                const value = datasets[0].data[i];
-                                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-                                
-                                return {
-                                    text: `${label} (${percentage}%)`,
-                                    fillStyle: datasets[0].backgroundColor[i],
-                                    strokeStyle: datasets[0].backgroundColor[i],
-                                    lineWidth: 2,
-                                    hidden: false,
-                                    index: i
-                                };
-                            });
-                        }
-                    }
-                },
-                tooltip: {
-                    enabled: true,
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleFont: { size: 14, weight: 'bold' },
-                    bodyFont: { size: 13 },
-                    padding: 12,
-                    cornerRadius: 8,
-                    callbacks: {
-                        label: function(context) {
-                            const value = context.parsed;
-                            const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-                            return `${context.label}: ${percentage}% (${value} registros)`;
-                        }
-                    }
-                }
+  chartPizzaStatus = new Chart(ctx, {
+    type: 'pie',
+    data: {
+      labels: labels,
+      datasets: [{
+        data: data,
+        backgroundColor: colors.slice(0, labels.length),
+        borderWidth: 3,
+        borderColor: '#ffffff'
+      }]
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      plugins: {
+        legend: {
+          display: true,
+          position: 'right',
+          labels: {
+            font: { size: 14, weight: 'bold', family: 'Arial, sans-serif' },
+            color: '#000000',
+            padding: 15,
+            usePointStyle: true,
+            pointStyle: 'circle',
+            boxWidth: 20,
+            boxHeight: 20,
+            generateLabels: function (chart) {
+              const datasets = chart.data.datasets;
+              const labels = chart.data.labels;
+
+              return labels.map((label, i) => {
+                const value = datasets[0].data[i];
+                const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+
+                return {
+                  text: `${label} (${percentage}%)`,
+                  fillStyle: datasets[0].backgroundColor[i],
+                  strokeStyle: datasets[0].backgroundColor[i],
+                  lineWidth: 2,
+                  hidden: false,
+                  index: i
+                };
+              });
             }
+          }
         },
-        plugins: [{
-            id: 'customPieLabelsInside',
-            afterDatasetsDraw: function(chart) {
-                const ctx = chart.ctx;
-                const dataset = chart.data.datasets[0];
-                const meta = chart.getDatasetMeta(0);
-                
-                ctx.save();
-                ctx.font = 'bold 14px Arial';
-                ctx.textAlign = 'center';
-                ctx.textBaseline = 'middle';
-                
-                meta.data.forEach(function(element, index) {
-                    const value = dataset.data[index];
-                    const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
-                    
-                    if (parseFloat(percentage) > 5) {
-                        ctx.fillStyle = '#ffffff';
-                        const position = element.tooltipPosition();
-                        ctx.fillText(`${percentage}%`, position.x, position.y);
-                    }
-                });
-                
-                ctx.restore();
+        tooltip: {
+          enabled: true,
+          backgroundColor: 'rgba(0, 0, 0, 0.8)',
+          titleFont: { size: 14, weight: 'bold' },
+          bodyFont: { size: 13 },
+          padding: 12,
+          cornerRadius: 8,
+          callbacks: {
+            label: function (context) {
+              const value = context.parsed;
+              const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+              return `${context.label}: ${percentage}% (${value} registros)`;
             }
-        }]
-    });
+          }
+        }
+      }
+    },
+    plugins: [{
+      id: 'customPieLabelsInside',
+      afterDatasetsDraw: function (chart) {
+        const ctx = chart.ctx;
+        const dataset = chart.data.datasets[0];
+        const meta = chart.getDatasetMeta(0);
+
+        ctx.save();
+        ctx.font = 'bold 14px Arial';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+
+        meta.data.forEach(function (element, index) {
+          const value = dataset.data[index];
+          const percentage = total > 0 ? ((value / total) * 100).toFixed(1) : '0.0';
+
+          if (parseFloat(percentage) > 5) {
+            ctx.fillStyle = '#ffffff';
+            const position = element.tooltipPosition();
+            ctx.fillText(`${percentage}%`, position.x, position.y);
+          }
+        });
+
+        ctx.restore();
+      }
+    }]
+  });
 }
 
 // ===================================
 // ATUALIZAR TABELA
 // ===================================
 function updateTable() {
-    const tbody = document.getElementById('tableBody');
-    const footer = document.getElementById('tableFooter');
-    tbody.innerHTML = '';
+  const tbody = document.getElementById('tableBody');
+  const footer = document.getElementById('tableFooter');
+  if (!tbody || !footer) return;
 
-    if (filteredData.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="12" class="loading-message"><i class="fas fa-inbox"></i> Nenhum registro encontrado</td></tr>';
-        footer.textContent = 'Mostrando 0 registros';
-        return;
+  tbody.innerHTML = '';
+
+  if (filteredData.length === 0) {
+    tbody.innerHTML = '<tr><td colspan="12" class="loading-message"><i class="fas fa-inbox"></i> Nenhum registro encontrado</td></tr>';
+    footer.textContent = 'Mostrando 0 registros';
+    return;
+  }
+
+  const hoje = new Date();
+
+  filteredData.forEach(item => {
+    const row = document.createElement('tr');
+
+    const origem = item['_origem'] || '-';
+
+    const dataSolicitacao = getColumnValue(item, [
+      'Data da Solicitação',
+      'Data Solicitação',
+      'Data da Solicitacao',
+      'Data Solicitacao'
+    ]);
+
+    const prontuario = getColumnValue(item, [
+      'Nº Prontuário',
+      'N° Prontuário',
+      'Numero Prontuário',
+      'Prontuário',
+      'Prontuario'
+    ]);
+
+    const dataInicioStr = getColumnValue(item, [
+      'Data Início da Pendência',
+      'Data Inicio da Pendencia',
+      'Data Início Pendência',
+      'Data Inicio Pendencia'
+    ]);
+
+    const prazo15 = getColumnValue(item, [
+      'Data Final do Prazo (Pendência com 15 dias)',
+      'Data Final do Prazo (Pendencia com 15 dias)',
+      'Data Final Prazo 15d',
+      'Prazo 15 dias'
+    ]);
+
+    const email15 = getColumnValue(item, [
+      'Data do envio do Email (Prazo: Pendência com 15 dias)',
+      'Data do envio do Email (Prazo: Pendencia com 15 dias)',
+      'Data Envio Email 15d',
+      'Email 15 dias'
+    ]);
+
+    const prazo30 = getColumnValue(item, [
+      'Data Final do Prazo (Pendência com 30 dias)',
+      'Data Final do Prazo (Pendencia com 30 dias)',
+      'Data Final Prazo 30d',
+      'Prazo 30 dias'
+    ]);
+
+    const email30 = getColumnValue(item, [
+      'Data do envio do Email (Prazo: Pendência com 30 dias)',
+      'Data do envio do Email (Prazo: Pendencia com 30 dias)',
+      'Data Envio Email 30d',
+      'Email 30 dias'
+    ]);
+
+    const dataInicio = parseDate(dataInicioStr);
+    let isVencendo15 = false;
+
+    if (dataInicio && origem === 'PENDÊNCIAS ELDORADO') {
+      const diasDecorridos = Math.floor((hoje - dataInicio) / (1000 * 60 * 60 * 24));
+      if (diasDecorridos >= 15 && diasDecorridos < 30) isVencendo15 = true;
     }
 
-    const hoje = new Date();
+    row.innerHTML = `
+      <td>${origem}</td>
+      <td>${formatDate(dataSolicitacao)}</td>
+      <td>${prontuario}</td>
+      <td>${item['Telefone'] || '-'}</td>
+      <td>${item['Unidade Solicitante'] || '-'}</td>
+      <td>${item['Cbo Especialidade'] || '-'}</td>
+      <td>${formatDate(dataInicioStr)}</td>
+      <td>${item['Status'] || '-'}</td>
+      <td>${formatDate(prazo15)}</td>
+      <td>${formatDate(email15)}</td>
+      <td>${formatDate(prazo30)}</td>
+      <td>${formatDate(email30)}</td>
+    `;
 
-    filteredData.forEach(item => {
-        const row = document.createElement('tr');
+    if (isVencendo15) row.classList.add('row-vencendo-15');
 
-        const origem = item['_origem'] || '-';
+    tbody.appendChild(row);
+  });
 
-        const dataSolicitacao = getColumnValue(item, [
-            'Data da Solicitação',
-            'Data Solicitação',
-            'Data da Solicitacao',
-            'Data Solicitacao'
-        ]);
-
-        const prontuario = getColumnValue(item, [
-            'Nº Prontuário',
-            'N° Prontuário',
-            'Numero Prontuário',
-            'Prontuário',
-            'Prontuario'
-        ]);
-
-        const dataInicioStr = getColumnValue(item, [
-            'Data Início da Pendência',
-            'Data Inicio da Pendencia',
-            'Data Início Pendência',
-            'Data Inicio Pendencia'
-        ]);
-
-        const prazo15 = getColumnValue(item, [
-            'Data Final do Prazo (Pendência com 15 dias)',
-            'Data Final do Prazo (Pendencia com 15 dias)',
-            'Data Final Prazo 15d',
-            'Prazo 15 dias'
-        ]);
-
-        const email15 = getColumnValue(item, [
-            'Data do envio do Email (Prazo: Pendência com 15 dias)',
-            'Data do envio do Email (Prazo: Pendencia com 15 dias)',
-            'Data Envio Email 15d',
-            'Email 15 dias'
-        ]);
-
-        const prazo30 = getColumnValue(item, [
-            'Data Final do Prazo (Pendência com 30 dias)',
-            'Data Final do Prazo (Pendencia com 30 dias)',
-            'Data Final Prazo 30d',
-            'Prazo 30 dias'
-        ]);
-
-        const email30 = getColumnValue(item, [
-            'Data do envio do Email (Prazo: Pendência com 30 dias)',
-            'Data do envio do Email (Prazo: Pendencia com 30 dias)',
-            'Data Envio Email 30d',
-            'Email 30 dias'
-        ]);
-
-        const dataInicio = parseDate(dataInicioStr);
-        let isVencendo15 = false;
-        
-        if (dataInicio && origem === 'PENDÊNCIAS ELDORADO') {
-            const diasDecorridos = Math.floor((hoje - dataInicio) / (1000 * 60 * 60 * 24));
-            if (diasDecorridos >= 15 && diasDecorridos < 30) {
-                isVencendo15 = true;
-            }
-        }
-
-        row.innerHTML = `
-            <td>${origem}</td>
-            <td>${formatDate(dataSolicitacao)}</td>
-            <td>${prontuario}</td>
-            <td>${item['Telefone'] || '-'}</td>
-            <td>${item['Unidade Solicitante'] || '-'}</td>
-            <td>${item['Cbo Especialidade'] || '-'}</td>
-            <td>${formatDate(dataInicioStr)}</td>
-            <td>${item['Status'] || '-'}</td>
-            <td>${formatDate(prazo15)}</td>
-            <td>${formatDate(email15)}</td>
-            <td>${formatDate(prazo30)}</td>
-            <td>${formatDate(email30)}</td>
-        `;
-
-        if (isVencendo15) {
-            row.classList.add('row-vencendo-15');
-        }
-
-        tbody.appendChild(row);
-    });
-
-    const total = allData.length;
-    const showing = filteredData.length;
-    footer.textContent = `Mostrando de 1 até ${showing} de ${total} registros`;
+  const total = allData.length;
+  const showing = filteredData.length;
+  footer.textContent = `Mostrando de 1 até ${showing} de ${total} registros`;
 }
 
 // ===================================
 // FUNÇÕES AUXILIARES
 // ===================================
 function parseDate(dateString) {
-    if (!dateString || dateString === '-') return null;
+  if (!dateString || dateString === '-') return null;
 
-    let match = dateString.match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
-    if (match) return new Date(match[3], match[2] - 1, match[1]);
+  let match = String(dateString).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);
+  if (match) return new Date(match[3], match[2] - 1, match[1]);
 
-    match = dateString.match(/(\d{4})-(\d{2})-(\d{2})/);
-    if (match) return new Date(match[1], match[2] - 1, match[3]);
+  match = String(dateString).match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (match) return new Date(match[1], match[2] - 1, match[3]);
 
-    return null;
+  return null;
 }
 
 function formatDate(dateString) {
-    if (!dateString || dateString === '-') return '-';
+  if (!dateString || dateString === '-') return '-';
 
-    const date = parseDate(dateString);
-    if (!date || isNaN(date.getTime())) return dateString;
+  const date = parseDate(dateString);
+  if (!date || isNaN(date.getTime())) return dateString;
 
-    const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const year = date.getFullYear();
+  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const year = date.getFullYear();
 
-    return `${day}/${month}/${year}`;
+  return `${day}/${month}/${year}`;
 }
 
 // ===================================
 // ATUALIZAR DADOS
 // ===================================
 function refreshData() {
-    loadData();
+  loadData();
 }
 
 // ===================================
 // DOWNLOAD EXCEL
 // ===================================
 function downloadExcel() {
-    if (filteredData.length === 0) {
-        alert('Não há dados para exportar.');
-        return;
-    }
+  if (filteredData.length === 0) {
+    alert('Não há dados para exportar.');
+    return;
+  }
 
-    const exportData = filteredData.map(item => ({
-        'Origem': item['_origem'] || '',
-        'Data Solicitação': getColumnValue(item, ['Data da Solicitação', 'Data Solicitação', 'Data da Solicitacao', 'Data Solicitacao'], ''),
-        'Nº Prontuário': getColumnValue(item, ['Nº Prontuário', 'N° Prontuário', 'Numero Prontuário', 'Prontuário', 'Prontuario'], ''),
-        'Telefone': item['Telefone'] || '',
-        'Unidade Solicitante': item['Unidade Solicitante'] || '',
-        'CBO Especialidade': item['Cbo Especialidade'] || '',
-        'Data Início Pendência': getColumnValue(item, ['Data Início da Pendência','Data Início Pendência','Data Inicio da Pendencia','Data Inicio Pendencia'], ''),
-        'Status': item['Status'] || '',
-        'Prestador': item['Prestador'] || '',
-        'Data Final Prazo 15d': getColumnValue(item, ['Data Final do Prazo (Pendência com 15 dias)','Data Final do Prazo (Pendencia com 15 dias)','Data Final Prazo 15d','Prazo 15 dias'], ''),
-        'Data Envio Email 15d': getColumnValue(item, ['Data do envio do Email (Prazo: Pendência com 15 dias)','Data do envio do Email (Prazo: Pendencia com 15 dias)','Data Envio Email 15d','Email 15 dias'], ''),
-        'Data Final Prazo 30d': getColumnValue(item, ['Data Final do Prazo (Pendência com 30 dias)','Data Final do Prazo (Pendencia com 30 dias)','Data Final Prazo 30d','Prazo 30 dias'], ''),
-        'Data Envio Email 30d': getColumnValue(item, ['Data do envio do Email (Prazo: Pendência com 30 dias)','Data do envio do Email (Prazo: Pendencia com 30 dias)','Data Envio Email 30d','Email 30 dias'], '')
-    }));
+  const exportData = filteredData.map(item => ({
+    'Origem': item['_origem'] || '',
+    'Data Solicitação': getColumnValue(item, ['Data da Solicitação', 'Data Solicitação', 'Data da Solicitacao', 'Data Solicitacao'], ''),
+    'Nº Prontuário': getColumnValue(item, ['Nº Prontuário', 'N° Prontuário', 'Numero Prontuário', 'Prontuário', 'Prontuario'], ''),
+    'Telefone': item['Telefone'] || '',
+    'Unidade Solicitante': item['Unidade Solicitante'] || '',
+    'CBO Especialidade': item['Cbo Especialidade'] || '',
+    'Data Início Pendência': getColumnValue(item, ['Data Início da Pendência', 'Data Início Pendência', 'Data Inicio da Pendencia', 'Data Inicio Pendencia'], ''),
+    'Status': item['Status'] || '',
+    'Prestador': item['Prestador'] || '',
+    'Data Final Prazo 15d': getColumnValue(item, ['Data Final do Prazo (Pendência com 15 dias)', 'Data Final do Prazo (Pendencia com 15 dias)', 'Data Final Prazo 15d', 'Prazo 15 dias'], ''),
+    'Data Envio Email 15d': getColumnValue(item, ['Data do envio do Email (Prazo: Pendência com 15 dias)', 'Data do envio do Email (Prazo: Pendencia com 15 dias)', 'Data Envio Email 15d', 'Email 15 dias'], ''),
+    'Data Final Prazo 30d': getColumnValue(item, ['Data Final do Prazo (Pendência com 30 dias)', 'Data Final do Prazo (Pendencia com 30 dias)', 'Data Final Prazo 30d', 'Prazo 30 dias'], ''),
+    'Data Envio Email 30d': getColumnValue(item, ['Data do envio do Email (Prazo: Pendência com 30 dias)', 'Data do envio do Email (Prazo: Pendencia com 30 dias)', 'Data Envio Email 30d', 'Email 30 dias'], '')
+  }));
 
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'Dados Completos');
+  const ws = XLSX.utils.json_to_sheet(exportData);
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Dados Completos');
 
-    ws['!cols'] = [
-        { wch: 20 }, { wch: 18 }, { wch: 15 }, { wch: 15 },
-        { wch: 30 }, { wch: 30 }, { wch: 18 }, { wch: 20 },
-        { wch: 25 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 20 }
-    ];
+  ws['!cols'] = [
+    { wch: 20 }, { wch: 18 }, { wch: 15 }, { wch: 15 },
+    { wch: 30 }, { wch: 30 }, { wch: 18 }, { wch: 20 },
+    { wch: 25 }, { wch: 18 }, { wch: 20 }, { wch: 18 }, { wch: 20 }
+  ];
 
-    const hoje = new Date().toISOString().split('T')[0];
-    XLSX.writeFile(wb, `Dados_Eldorado_${hoje}.xlsx`);
+  const hoje = new Date().toISOString().split('T')[0];
+  XLSX.writeFile(wb, `Dados_Eldorado_${hoje}.xlsx`);
 }
-
