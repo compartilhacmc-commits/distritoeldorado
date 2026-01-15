@@ -2,7 +2,7 @@
 // FUNÇÃO: URL CSV (Google Sheets gviz) + ANTI-CACHE
 // ===================================
 function gvizCsvUrl(sheetId, gid) {
-  const cacheBust = Date.now(); // força buscar atualizado
+  const cacheBust = Date.now();
   return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}&_=${cacheBust}`;
 }
 
@@ -11,9 +11,7 @@ function gvizCsvUrl(sheetId, gid) {
 // ===================================
 const SHEET_ID = '1r6NLcVkVLD5vp4UxPEa7TcreBpOd0qeNt-QREOG4Xr4';
 
-// ✅ CONFIGURAÇÃO DAS DUAS ABAS
 const SHEETS = [
-  // DISTRITO ELDORADO
   {
     name: 'PENDÊNCIAS ELDORADO',
     url: gvizCsvUrl(SHEET_ID, '278071504'),
@@ -70,7 +68,6 @@ function toggleMultiSelect(id) {
   document.getElementById(id).classList.toggle('open');
 }
 
-// fecha dropdown ao clicar fora
 document.addEventListener('click', (e) => {
   document.querySelectorAll('.multi-select').forEach(ms => {
     if (!ms.contains(e.target)) ms.classList.remove('open');
@@ -162,10 +159,8 @@ async function loadData() {
           return response.text();
         })
         .then(csvText => {
-          // remove BOM
           csvText = csvText.replace(/^\uFEFF/, '');
 
-          // Se voltou HTML, normalmente é permissão/login
           if (csvText.includes('<html') || csvText.includes('<!DOCTYPE')) {
             throw new Error(
               `Aba "${sheet.name}" retornou HTML (provável falta de permissão ou planilha não pública).`
@@ -491,10 +486,10 @@ function updateCards() {
 }
 
 // ===================================
-// ✅ ATUALIZAR GRÁFICOS
+// ✅ ATUALIZAR GRÁFICOS (CORES ALTERADAS)
 // ===================================
 function updateCharts() {
-  // ✅ PENDÊNCIAS NÃO RESOLVIDAS POR UNIDADE (APENAS ABA "PENDÊNCIAS ELDORADO")
+  // ✅ PENDÊNCIAS NÃO RESOLVIDAS POR UNIDADE - VERMELHO (#dc2626)
   const pendenciasNaoResolvidasUnidade = {};
   filteredData.forEach(item => {
     if (item['_origem'] !== 'PENDÊNCIAS ELDORADO') return;
@@ -509,7 +504,7 @@ function updateCharts() {
     .slice(0, 50);
   const pendenciasNRValues = pendenciasNRLabels.map(label => pendenciasNaoResolvidasUnidade[label]);
 
-  createHorizontalBarChart('chartPendenciasNaoResolvidasUnidade', pendenciasNRLabels, pendenciasNRValues, '#065f46');
+  createHorizontalBarChart('chartPendenciasNaoResolvidasUnidade', pendenciasNRLabels, pendenciasNRValues, '#dc2626');
 
   // Gráfico de Unidades
   const unidadesCount = {};
@@ -526,7 +521,7 @@ function updateCharts() {
 
   createHorizontalBarChart('chartUnidades', unidadesLabels, unidadesValues, '#48bb78');
 
-  // Gráfico de Especialidades
+  // ✅ GRÁFICO DE ESPECIALIDADES - VERDE ESCURO (#065f46)
   const especialidadesCount = {};
   filteredData.forEach(item => {
     if (!isPendenciaByUsuario(item)) return;
@@ -539,7 +534,7 @@ function updateCharts() {
     .slice(0, 50);
   const especialidadesValues = especialidadesLabels.map(label => especialidadesCount[label]);
 
-  createHorizontalBarChart('chartEspecialidades', especialidadesLabels, especialidadesValues, '#ef4444');
+  createHorizontalBarChart('chartEspecialidades', especialidadesLabels, especialidadesValues, '#065f46');
 
   // Gráfico de Status
   const statusCount = {};
@@ -627,7 +622,6 @@ function createResolutividadeChart(canvasId, fieldName) {
 
     stats[valor].total++;
 
-    // ✅ CORREÇÃO: _origem é "RESOLVIDOS ELDORADO" (ou contém "RESOLVIDOS")
     if ((item['_origem'] || '').toUpperCase().includes('RESOLVIDOS')) {
       stats[valor].resolvidos++;
     }
