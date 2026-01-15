@@ -20,14 +20,15 @@ const SHEETS = [
 // ===================================
 let allData = [];
 let filteredData = [];
+let chartPendenciasNaoResolvidasUnidade = null;
 let chartUnidades = null;
 let chartEspecialidades = null;
 let chartStatus = null;
 let chartPizzaStatus = null;
-
-// ✅ NOVOS GRÁFICOS
 let chartPendenciasPrestador = null;
 let chartPendenciasMes = null;
+let chartResolutividadeUnidade = null;
+let chartResolutividadePrestador = null;
 
 // ===================================
 // FUNÇÃO AUXILIAR PARA BUSCAR VALOR DE COLUNA
@@ -139,7 +140,6 @@ async function loadData() {
     try {
         console.log('Carregando dados das duas abas...');
 
-        // ✅ CARREGAR AS DUAS ABAS EM PARALELO
         const promises = SHEETS.map(sheet => 
             fetch(sheet.url)
                 .then(response => {
@@ -156,7 +156,6 @@ async function loadData() {
 
         const results = await Promise.all(promises);
 
-        // ✅ PROCESSAR CADA ABA
         results.forEach(result => {
             const rows = parseCSV(result.csv);
 
@@ -171,7 +170,7 @@ async function loadData() {
             const sheetData = rows.slice(1)
                 .filter(row => row.length > 1 && row[0])
                 .map(row => {
-                    const obj = { _origem: result.name }; // ✅ Marca a origem dos dados
+                    const obj = { _origem: result.name };
                     headers.forEach((header, index) => {
                         obj[header.trim()] = (row[index] || '').trim();
                     });
@@ -280,15 +279,13 @@ function populateFilters() {
     setMultiSelectText('msEspecialidadeText', [], 'Todas');
     setMultiSelectText('msPrestadorText', [], 'Todos');
 
-    // ✅ POPULAR FILTRO DE MÊS
     populateMonthFilter();
 }
 
 // ===================================
-// ✅ POPULAR FILTRO DE MÊS (BASEADO EM "Data Início da Pendência")
+// ✅ POPULAR FILTRO DE MÊS (MULTISELECT STYLE)
 // ===================================
 function populateMonthFilter() {
-    const selectMes = document.getElementById('filterMes');
     const mesesSet = new Set();
 
     allData.forEach(item => {
@@ -306,17 +303,14 @@ function populateMonthFilter() {
     });
 
     const mesesOrdenados = Array.from(mesesSet).sort().reverse();
-
-    selectMes.innerHTML = '<option value="">Todos os Meses</option>';
-    
-    mesesOrdenados.forEach(mesAno => {
+    const mesesFormatados = mesesOrdenados.map(mesAno => {
         const [ano, mes] = mesAno.split('-');
         const nomeMes = new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
-        const option = document.createElement('option');
-        option.value = mesAno;
-        option.textContent = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
-        selectMes.appendChild(option);
+        return nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
     });
+
+    renderMultiSelect('msMesPanel', mesesFormatados, applyFilters);
+    setMultiSelectText('msMesText', [], 'Todos os Meses');
 }
 
 // ===================================
@@ -327,12 +321,13 @@ function applyFilters() {
     const unidadeSel = getSelectedFromPanel('msUnidadePanel');
     const especialidadeSel = getSelectedFromPanel('msEspecialidadePanel');
     const prestadorSel = getSelectedFromPanel('msPrestadorPanel');
-    const mesSel = document.getElementById('filterMes').value;
+    const mesSel = getSelectedFromPanel('msMesPanel');
 
     setMultiSelectText('msStatusText', statusSel, 'Todos');
     setMultiSelectText('msUnidadeText', unidadeSel, 'Todas');
     setMultiSelectText('msEspecialidadeText', especialidadeSel, 'Todas');
     setMultiSelectText('msPrestadorText', prestadorSel, 'Todos');
+    setMultiSelectText('msMesText', mesSel, 'Todos os Meses');
 
     filteredData = allData.filter(item => {
         const okStatus = (statusSel.length === 0) || statusSel.includes(item['Status'] || '');
@@ -340,9 +335,8 @@ function applyFilters() {
         const okEsp = (especialidadeSel.length === 0) || especialidadeSel.includes(item['Cbo Especialidade'] || '');
         const okPrest = (prestadorSel.length === 0) || prestadorSel.includes(item['Prestador'] || '');
 
-        // ✅ FILTRO POR MÊS
         let okMes = true;
-        if (mesSel) {
+        if (mesSel.length > 0) {
             const dataInicio = parseDate(getColumnValue(item, [
                 'Data Início da Pendência',
                 'Data Inicio da Pendencia',
@@ -350,8 +344,11 @@ function applyFilters() {
                 'Data Inicio Pendencia'
             ]));
             if (dataInicio) {
-                const mesAnoItem = `${dataInicio.getFullYear()}-${String(dataInicio.getMonth() + 1).padStart(2, '0')}`;
-                okMes = (mesAnoItem === mesSel);
+                const mesAno = `${dataInicio.getFullYear()}-${String(dataInicio.getMonth() + 1).padStart(2, '0')}`;
+                const [ano, mes] = mesAno.split('-');
+                const nomeMes = new Date(ano, mes - 1).toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' });
+                const mesFormatado = nomeMes.charAt(0).toUpperCase() + nomeMes.slice(1);
+                okMes = mesSel.includes(mesFormatado);
             } else {
                 okMes = false;
             }
@@ -367,7 +364,7 @@ function applyFilters() {
 // ✅ LIMPAR FILTROS (MULTISELECT + MÊS)
 // ===================================
 function clearFilters() {
-    ['msStatusPanel','msUnidadePanel','msEspecialidadePanel','msPrestadorPanel'].forEach(panelId => {
+    ['msStatusPanel','msUnidadePanel','msEspecialidadePanel','msPrestadorPanel','msMesPanel'].forEach(panelId => {
         const panel = document.getElementById(panelId);
         if (!panel) return;
         panel.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
@@ -377,9 +374,9 @@ function clearFilters() {
     setMultiSelectText('msUnidadeText', [], 'Todas');
     setMultiSelectText('msEspecialidadeText', [], 'Todas');
     setMultiSelectText('msPrestadorText', [], 'Todos');
+    setMultiSelectText('msMesText', [], 'Todos os Meses');
 
     document.getElementById('searchInput').value = '';
-    document.getElementById('filterMes').value = '';
 
     filteredData = [...allData];
     updateDashboard();
@@ -469,7 +466,24 @@ function updateCards() {
 // ✅ ATUALIZAR GRÁFICOS
 // ===================================
 function updateCharts() {
-    // ✅ Gráfico de Unidades (SOMENTE COM "USUÁRIO" PREENCHIDO)
+    // ✅ NOVO: PENDÊNCIAS NÃO RESOLVIDAS POR UNIDADE (APENAS ABA "PENDÊNCIAS ELDORADO")
+    const pendenciasNaoResolvidasUnidade = {};
+    filteredData.forEach(item => {
+        if (item['_origem'] !== 'PENDÊNCIAS ELDORADO') return;
+        if (!isPendenciaByUsuario(item)) return;
+        
+        const unidade = item['Unidade Solicitante'] || 'Não informado';
+        pendenciasNaoResolvidasUnidade[unidade] = (pendenciasNaoResolvidasUnidade[unidade] || 0) + 1;
+    });
+
+    const pendenciasNRLabels = Object.keys(pendenciasNaoResolvidasUnidade)
+        .sort((a, b) => pendenciasNaoResolvidasUnidade[b] - pendenciasNaoResolvidasUnidade[a])
+        .slice(0, 50);
+    const pendenciasNRValues = pendenciasNRLabels.map(label => pendenciasNaoResolvidasUnidade[label]);
+
+    createHorizontalBarChart('chartPendenciasNaoResolvidasUnidade', pendenciasNRLabels, pendenciasNRValues, '#065f46');
+
+    // Gráfico de Unidades
     const unidadesCount = {};
     filteredData.forEach(item => {
         if (!isPendenciaByUsuario(item)) return;
@@ -484,7 +498,7 @@ function updateCharts() {
 
     createHorizontalBarChart('chartUnidades', unidadesLabels, unidadesValues, '#48bb78');
 
-    // ✅ Gráfico de Especialidades (SOMENTE COM "USUÁRIO" PREENCHIDO)
+    // Gráfico de Especialidades
     const especialidadesCount = {};
     filteredData.forEach(item => {
         if (!isPendenciaByUsuario(item)) return;
@@ -499,7 +513,7 @@ function updateCharts() {
 
     createHorizontalBarChart('chartEspecialidades', especialidadesLabels, especialidadesValues, '#ef4444');
 
-    // ✅ GRÁFICO DE STATUS (mantido)
+    // Gráfico de Status
     const statusCount = {};
     filteredData.forEach(item => {
         const status = item['Status'] || 'Não informado';
@@ -512,10 +526,10 @@ function updateCharts() {
 
     createVerticalBarChart('chartStatus', statusLabels, statusValues, '#f97316');
 
-    // ✅ GRÁFICO DE PIZZA (mantido)
+    // Gráfico de Pizza
     createPieChart('chartPizzaStatus', statusLabels, statusValues);
 
-    // ✅ NOVO: PENDÊNCIAS POR PRESTADOR (VERTICAL, USUÁRIO PREENCHIDO)
+    // Pendências por Prestador
     const prestadorCount = {};
     filteredData.forEach(item => {
         if (!isPendenciaByUsuario(item)) return;
@@ -532,10 +546,10 @@ function updateCharts() {
         'chartPendenciasPrestador',
         prestLabels,
         prestValues,
-        '#4c1d95' // roxo escuro
+        '#4c1d95'
     );
 
-    // ✅ NOVO: PENDÊNCIAS POR MÊS (VERTICAL, USUÁRIO PREENCHIDO)
+    // Pendências por Mês
     const mesCount = {};
     filteredData.forEach(item => {
         if (!isPendenciaByUsuario(item)) return;
@@ -567,8 +581,153 @@ function updateCharts() {
         'chartPendenciasMes',
         mesLabels,
         mesValues,
-        '#0b2a6f' // azul escuro
+        '#0b2a6f'
     );
+
+    // ✅ NOVO: RESOLUTIVIDADE POR UNIDADE
+    createResolutividadeChart('chartResolutividadeUnidade', 'Unidade Solicitante');
+
+    // ✅ NOVO: RESOLUTIVIDADE POR PRESTADOR
+    createResolutividadeChart('chartResolutividadePrestador', 'Prestador');
+}
+
+// ===================================
+// ✅ CRIAR GRÁFICO DE RESOLUTIVIDADE (HORIZONTAL COM %)
+// ===================================
+function createResolutividadeChart(canvasId, fieldName) {
+    const ctx = document.getElementById(canvasId);
+    
+    if (canvasId === 'chartResolutividadeUnidade' && chartResolutividadeUnidade) {
+        chartResolutividadeUnidade.destroy();
+    }
+    if (canvasId === 'chartResolutividadePrestador' && chartResolutividadePrestador) {
+        chartResolutividadePrestador.destroy();
+    }
+
+    // Calcular resolutividade
+    const stats = {};
+
+    allData.forEach(item => {
+        if (!isPendenciaByUsuario(item)) return;
+        
+        const valor = item[fieldName] || 'Não informado';
+        if (!stats[valor]) {
+            stats[valor] = { total: 0, resolvidos: 0 };
+        }
+        
+        stats[valor].total++;
+        if (item['_origem'] === 'RESOLVIDOS') {
+            stats[valor].resolvidos++;
+        }
+    });
+
+    // Calcular taxa de resolutividade
+    const data = Object.keys(stats).map(key => ({
+        label: key,
+        total: stats[key].total,
+        resolvidos: stats[key].resolvidos,
+        taxa: stats[key].total > 0 ? (stats[key].resolvidos / stats[key].total * 100) : 0
+    }));
+
+    // Ordenar por taxa decrescente
+    data.sort((a, b) => b.taxa - a.taxa);
+
+    // Top 10
+    const top10 = data.slice(0, 10);
+    const labels = top10.map(d => d.label);
+    const taxas = top10.map(d => d.taxa);
+
+    const chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Taxa de Resolutividade (%)',
+                data: taxas,
+                backgroundColor: '#10b981',
+                borderWidth: 0,
+                borderRadius: 4,
+                barPercentage: 0.75,
+                categoryPercentage: 0.85
+            }]
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    enabled: true,
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleFont: { size: 14, weight: 'bold' },
+                    bodyFont: { size: 13 },
+                    padding: 12,
+                    cornerRadius: 8,
+                    callbacks: {
+                        label: function(context) {
+                            const index = context.dataIndex;
+                            const item = top10[index];
+                            return [
+                                `Taxa: ${item.taxa.toFixed(1)}%`,
+                                `Resolvidos: ${item.resolvidos}`,
+                                `Total: ${item.total}`
+                            ];
+                        }
+                    }
+                }
+            },
+            scales: {
+                x: { 
+                    display: true,
+                    max: 100,
+                    grid: { display: true, color: 'rgba(0,0,0,0.05)' },
+                    ticks: {
+                        callback: function(value) {
+                            return value + '%';
+                        }
+                    }
+                },
+                y: {
+                    ticks: {
+                        font: { size: 12, weight: '500' },
+                        color: '#4a5568',
+                        padding: 8
+                    },
+                    grid: { display: false }
+                }
+            },
+            layout: { padding: { right: 60 } }
+        },
+        plugins: [{
+            id: 'resolutividadeLabels',
+            afterDatasetsDraw: function(chart) {
+                const ctx = chart.ctx;
+                chart.data.datasets.forEach(function(dataset, i) {
+                    const meta = chart.getDatasetMeta(i);
+                    if (!meta.hidden) {
+                        meta.data.forEach(function(element, index) {
+                            ctx.fillStyle = '#000000';
+                            ctx.font = 'bold 13px Arial';
+                            ctx.textAlign = 'left';
+                            ctx.textBaseline = 'middle';
+
+                            const taxa = dataset.data[index];
+                            const item = top10[index];
+                            const texto = `${taxa.toFixed(1)}% (${item.resolvidos}/${item.total})`;
+                            const xPos = element.x + 10;
+                            const yPos = element.y;
+
+                            ctx.fillText(texto, xPos, yPos);
+                        });
+                    }
+                });
+            }
+        }]
+    });
+
+    if (canvasId === 'chartResolutividadeUnidade') chartResolutividadeUnidade = chart;
+    if (canvasId === 'chartResolutividadePrestador') chartResolutividadePrestador = chart;
 }
 
 // ===================================
@@ -577,6 +736,9 @@ function updateCharts() {
 function createHorizontalBarChart(canvasId, labels, data, color) {
     const ctx = document.getElementById(canvasId);
 
+    if (canvasId === 'chartPendenciasNaoResolvidasUnidade' && chartPendenciasNaoResolvidasUnidade) {
+        chartPendenciasNaoResolvidasUnidade.destroy();
+    }
     if (canvasId === 'chartUnidades' && chartUnidades) chartUnidades.destroy();
     if (canvasId === 'chartEspecialidades' && chartEspecialidades) chartEspecialidades.destroy();
 
@@ -647,12 +809,13 @@ function createHorizontalBarChart(canvasId, labels, data, color) {
         }]
     });
 
+    if (canvasId === 'chartPendenciasNaoResolvidasUnidade') chartPendenciasNaoResolvidasUnidade = chart;
     if (canvasId === 'chartUnidades') chartUnidades = chart;
     if (canvasId === 'chartEspecialidades') chartEspecialidades = chart;
 }
 
 // ===================================
-// ✅ NOVO: GRÁFICO VERTICAL COM VALOR NO MEIO DA BARRA (BRANCO E NEGRITO)
+// GRÁFICO VERTICAL COM VALOR NO MEIO DA BARRA
 // ===================================
 function createVerticalBarChartCenteredValue(canvasId, labels, data, color) {
     const ctx = document.getElementById(canvasId);
@@ -739,7 +902,7 @@ function createVerticalBarChartCenteredValue(canvasId, labels, data, color) {
 }
 
 // ===================================
-// ✅ CRIAR GRÁFICO DE BARRAS VERTICAIS (STATUS) COM VALORES NO MEIO DAS BARRAS
+// CRIAR GRÁFICO DE BARRAS VERTICAIS (STATUS)
 // ===================================
 function createVerticalBarChart(canvasId, labels, data, color) {
     const ctx = document.getElementById(canvasId);
@@ -823,7 +986,7 @@ function createVerticalBarChart(canvasId, labels, data, color) {
 }
 
 // ===================================
-// ✅ CRIAR GRÁFICO DE PIZZA COM LEGENDA COMPLETA (TEXTO + BOLINHA)
+// CRIAR GRÁFICO DE PIZZA
 // ===================================
 function createPieChart(canvasId, labels, data) {
     const ctx = document.getElementById(canvasId);
@@ -934,7 +1097,7 @@ function createPieChart(canvasId, labels, data) {
 }
 
 // ===================================
-// ✅ ATUALIZAR TABELA - DESTAQUE AMARELO APENAS PARA ABA "PENDÊNCIAS ELDORADO"
+// ATUALIZAR TABELA
 // ===================================
 function updateTable() {
     const tbody = document.getElementById('tableBody');
@@ -1004,7 +1167,6 @@ function updateTable() {
             'Email 30 dias'
         ]);
 
-        // ✅ VERIFICAR SE ESTÁ VENCENDO EM 15 DIAS E SE É DA ABA "PENDÊNCIAS ELDORADO"
         const dataInicio = parseDate(dataInicioStr);
         let isVencendo15 = false;
         
@@ -1030,7 +1192,6 @@ function updateTable() {
             <td>${formatDate(email30)}</td>
         `;
 
-        // ✅ APLICAR DESTAQUE AMARELO SOMENTE SE FOR DA ABA "PENDÊNCIAS ELDORADO" E ESTIVER VENCENDO EM 15 DIAS
         if (isVencendo15) {
             row.classList.add('row-vencendo-15');
         }
