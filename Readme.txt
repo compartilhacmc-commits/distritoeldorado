@@ -1,9 +1,9 @@
 Painel de Controle - Sistema Vivver
 📋 Descrição
-Painel automatizado para controle de pendências e solicitações do Sistema Vivver - Central de Marcação de Consultas do Distrito Sanitário Eldorado.
+Painel automatizado para controle de pendências e solicitações do Sistema Vivver - Central de Marcação de Consultas.
 
 Desenvolvido por: Ana P. A. Silva - Matrícula 201704
-Diretoria de Regulação - Distrito Sanitário Eldorado
+Diretoria de Regulação - CEAPS
 
 ✨ Funcionalidades
 🎯 Principais Recursos
@@ -31,3 +31,4 @@ Tabela Detalhada
 
 Visualização completa dos dados filtrados
 Informações: Nº Solicitação, Datas, Prontuário, Telefone, Unidade, Especialidade, Status
+
