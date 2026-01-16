@@ -154,9 +154,8 @@
             </button>
         </div>
 
-        <!-- Gráficos (ORDEM ALTERADA) -->
+        <!-- Gráficos -->
         <div class="charts-container">
-            <!-- LINHA 1 -->
             <div class="chart-box">
                 <h3 class="chart-title">Registros Geral de Pendências por Unidade de Saúde</h3>
                 <div class="chart-wrapper">
@@ -171,7 +170,6 @@
                 </div>
             </div>
 
-            <!-- LINHA 2 -->
             <div class="chart-box">
                 <h3 class="chart-title">Registros Geral de Pendências por Especialidade</h3>
                 <div class="chart-wrapper">
@@ -186,7 +184,6 @@
                 </div>
             </div>
 
-            <!-- LINHA 3 -->
             <div class="chart-box">
                 <h3 class="chart-title">Quantidade de Pendências por Prestador</h3>
                 <div class="chart-wrapper">
@@ -201,7 +198,6 @@
                 </div>
             </div>
 
-            <!-- LINHA 4 -->
             <div class="chart-box">
                 <h3 class="chart-title">Estatística de Resolutividade por Unidade de Saúde</h3>
                 <div class="chart-wrapper">
@@ -216,7 +212,6 @@
                 </div>
             </div>
 
-            <!-- LINHA 5 - PIZZA (FULL WIDTH) -->
             <div class="chart-box chart-box-full">
                 <h3 class="chart-title">Distribuição Percentual por Status</h3>
                 <div class="chart-wrapper chart-wrapper-pizza">
@@ -241,23 +236,102 @@
                 <table class="data-table" id="dataTable">
                     <thead>
                         <tr>
-                            <th>Origem</th>
-                            <th>Data Solicitação</th>
-                            <th>Nº Prontuário</th>
-                            <th>Telefone</th>
-                            <th>Unidade Solicitante</th>
-                            <th>CBO Especialidade</th>
-                            <th>Data Início Pendência</th>
-                            <th>Status</th>
-                            <th>Data Final Prazo (15d)</th>
-                            <th>Data Envio Email (15d)</th>
-                            <th>Data Final Prazo (30d)</th>
-                            <th>Data Envio Email (30d)</th>
+                            <th data-col="Origem">
+                                Origem
+                                <button class="th-filter-btn" type="button" data-filter-btn="Origem" aria-label="Filtrar coluna Origem">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </th>
+
+                            <th data-col="Data Solicitação">
+                                Data Solicitação
+                                <button class="th-filter-btn" type="button" data-filter-btn="Data Solicitação" aria-label="Filtrar coluna Data Solicitação">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </th>
+
+                            <th data-col="SOLICITAÇÃO">
+                                SOLICITAÇÃO
+                                <button class="th-filter-btn" type="button" data-filter-btn="SOLICITAÇÃO" aria-label="Filtrar coluna SOLICITAÇÃO">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </th>
+
+                            <th data-col="Nº Prontuário">
+                                Nº Prontuário
+                                <button class="th-filter-btn" type="button" data-filter-btn="Nº Prontuário" aria-label="Filtrar coluna Nº Prontuário">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </th>
+
+                            <th data-col="Telefone">
+                                Telefone
+                                <button class="th-filter-btn" type="button" data-filter-btn="Telefone" aria-label="Filtrar coluna Telefone">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </th>
+
+                            <th data-col="Unidade Solicitante">
+                                Unidade Solicitante
+                                <button class="th-filter-btn" type="button" data-filter-btn="Unidade Solicitante" aria-label="Filtrar coluna Unidade Solicitante">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </th>
+
+                            <th data-col="CBO Especialidade">
+                                CBO Especialidade
+                                <button class="th-filter-btn" type="button" data-filter-btn="CBO Especialidade" aria-label="Filtrar coluna CBO Especialidade">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </th>
+
+                            <th data-col="Data Início Pendência">
+                                Data Início Pendência
+                                <button class="th-filter-btn" type="button" data-filter-btn="Data Início Pendência" aria-label="Filtrar coluna Data Início Pendência">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </th>
+
+                            <th data-col="Status">
+                                Status
+                                <button class="th-filter-btn" type="button" data-filter-btn="Status" aria-label="Filtrar coluna Status">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </th>
+
+                            <th data-col="Data Final Prazo (15d)">
+                                Data Final Prazo (15d)
+                                <button class="th-filter-btn" type="button" data-filter-btn="Data Final Prazo (15d)" aria-label="Filtrar coluna Data Final Prazo (15d)">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </th>
+
+                            <th data-col="Data Envio Email (15d)">
+                                Data Envio Email (15d)
+                                <button class="th-filter-btn" type="button" data-filter-btn="Data Envio Email (15d)" aria-label="Filtrar coluna Data Envio Email (15d)">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </th>
+
+                            <th data-col="Data Final Prazo (30d)">
+                                Data Final Prazo (30d)
+                                <button class="th-filter-btn" type="button" data-filter-btn="Data Final Prazo (30d)" aria-label="Filtrar coluna Data Final Prazo (30d)">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </th>
+
+                            <th data-col="Data Envio Email (30d)">
+                                Data Envio Email (30d)
+                                <button class="th-filter-btn" type="button" data-filter-btn="Data Envio Email (30d)" aria-label="Filtrar coluna Data Envio Email (30d)">
+                                    <i class="fas fa-filter"></i>
+                                </button>
+                            </th>
                         </tr>
                     </thead>
+
                     <tbody id="tableBody">
                         <tr>
-                            <td colspan="12" class="loading-message">
+                            <td colspan="13" class="loading-message">
                                 <i class="fas fa-spinner fa-spin"></i> Carregando dados...
                             </td>
                         </tr>
@@ -287,6 +361,23 @@
             <i class="fas fa-spinner fa-spin"></i>
             <p>Carregando dados das planilhas...</p>
         </div>
+    </div>
+
+    <!-- ✅ DROPDOWN ÚNICO DO FILTRO POR COLUNA -->
+    <div class="col-filter" id="colFilter" aria-hidden="true">
+        <div class="col-filter-header">
+            <div class="col-filter-title" id="colFilterTitle">Filtro</div>
+            <button type="button" class="col-filter-close" id="colFilterClose" aria-label="Fechar filtro">
+                <i class="fas fa-times"></i>
+            </button>
+        </div>
+
+        <div class="col-filter-actions">
+            <button type="button" class="cf-btn cf-all" id="cfAll">Todos</button>
+            <button type="button" class="cf-btn cf-none" id="cfNone">Limpar</button>
+        </div>
+
+        <div class="col-filter-list" id="colFilterList"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
