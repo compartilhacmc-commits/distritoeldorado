@@ -138,7 +138,34 @@ function setMultiSelectText(textId, selected, fallbackLabel) {
 document.addEventListener('DOMContentLoaded', function () {
   console.log('Iniciando carregamento de dados...');
   loadData();
+  
+  // ✅ ADICIONA LISTENER PARA RESPONSIVIDADE
+  window.addEventListener('resize', debounce(handleResize, 250));
 });
+
+// ===================================
+// ✅ FUNÇÃO DEBOUNCE PARA RESIZE
+// ===================================
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}
+
+// ===================================
+// ✅ HANDLER DE RESIZE RESPONSIVO
+// ===================================
+function handleResize() {
+  if (filteredData.length > 0) {
+    updateCharts();
+  }
+}
 
 // ===================================
 // ✅ CARREGAR DADOS DAS DUAS ABAS
@@ -486,7 +513,7 @@ function updateCards() {
 }
 
 // ===================================
-// ✅ ATUALIZAR GRÁFICOS (CORES ALTERADAS)
+// ✅ ATUALIZAR GRÁFICOS (RESPONSIVOS)
 // ===================================
 function updateCharts() {
   // ✅ PENDÊNCIAS NÃO RESOLVIDAS POR UNIDADE - VERMELHO (#dc2626)
@@ -603,43 +630,67 @@ function updateCharts() {
 }
 
 // ===================================
-// ✅ GRÁFICO DE RESOLUTIVIDADE (HORIZONTAL COM %)
+// ✅ GRÁFICO DE RESOLUTIVIDADE
 // ===================================
 function createResolutividadeChart(canvasId, fieldName) {
   const ctx = document.getElementById(canvasId);
   if (!ctx) return;
 
-  if (canvasId === 'chartResolutividadeUnidade' && chartResolutividadeUnidade) chartResolutividadeUnidade.destroy();
-  if (canvasId === 'chartResolutividadePrestador' && chartResolutividadePrestador) chartResolutividadePrestador.destroy();
+  // Destruir gráfico anterior
+  if (canvasId === 'chartResolutividadeUnidade' && chartResolutividadeUnidade) {
+    chartResolutividadeUnidade.destroy();
+  }
+  if (canvasId === 'chartResolutividadePrestador' && chartResolutividadePrestador) {
+    chartResolutividadePrestador.destroy();
+  }
 
+  // ✅ Calcular estatísticas por unidade/prestador
   const stats = {};
 
+  // Processar TODOS os dados (não apenas filtrados) para estatística real
   allData.forEach(item => {
     if (!isPendenciaByUsuario(item)) return;
 
     const valor = item[fieldName] || 'Não informado';
-    if (!stats[valor]) stats[valor] = { total: 0, resolvidos: 0 };
+    
+    if (!stats[valor]) {
+      stats[valor] = { 
+        pendentes: 0,
+        resolvidos: 0
+      };
+    }
 
-    stats[valor].total++;
-
-    if ((item['_origem'] || '').toUpperCase().includes('RESOLVIDOS')) {
+    // Contar pendentes e resolvidos
+    if (item['_origem'] === 'PENDÊNCIAS ELDORADO') {
+      stats[valor].pendentes++;
+    } else if (item['_origem'] === 'RESOLVIDOS ELDORADO') {
       stats[valor].resolvidos++;
     }
   });
 
-  const data = Object.keys(stats).map(key => ({
-    label: key,
-    total: stats[key].total,
-    resolvidos: stats[key].resolvidos,
-    taxa: stats[key].total > 0 ? (stats[key].resolvidos / stats[key].total * 100) : 0
-  }));
+  // Calcular total e taxa de resolutividade
+  const data = Object.keys(stats).map(key => {
+    const total = stats[key].pendentes + stats[key].resolvidos;
+    const resolvidos = stats[key].resolvidos;
+    const taxa = total > 0 ? (resolvidos / total * 100) : 0;
+    
+    return {
+      label: key,
+      pendentes: stats[key].pendentes,
+      resolvidos: resolvidos,
+      total: total,
+      taxa: taxa
+    };
+  });
 
+  // Ordenar por taxa decrescente e pegar top 10
   data.sort((a, b) => b.taxa - a.taxa);
-
   const top10 = data.slice(0, 10);
+
   const labels = top10.map(d => d.label);
   const taxas = top10.map(d => d.taxa);
 
+  // ✅ gráfico com responsividade
   const chart = new Chart(ctx, {
     type: 'bar',
     data: {
@@ -674,6 +725,7 @@ function createResolutividadeChart(canvasId, fieldName) {
               return [
                 `Taxa: ${item.taxa.toFixed(1)}%`,
                 `Resolvidos: ${item.resolvidos}`,
+                `Pendentes: ${item.pendentes}`,
                 `Total: ${item.total}`
               ];
             }
@@ -686,19 +738,20 @@ function createResolutividadeChart(canvasId, fieldName) {
           max: 100,
           grid: { display: true, color: 'rgba(0,0,0,0.05)' },
           ticks: {
-            callback: function (value) { return value + '%'; }
+            callback: function (value) { return value + '%'; },
+            font: { size: 11 }
           }
         },
         y: {
           ticks: {
-            font: { size: 12, weight: '500' },
+            font: { size: window.innerWidth < 768 ? 10 : 12, weight: '500' },
             color: '#4a5568',
             padding: 8
           },
           grid: { display: false }
         }
       },
-      layout: { padding: { right: 60 } }
+      layout: { padding: { right: 80 } }
     },
     plugins: [{
       id: 'resolutividadeLabels',
@@ -709,13 +762,12 @@ function createResolutividadeChart(canvasId, fieldName) {
           if (!meta.hidden) {
             meta.data.forEach(function (element, index) {
               ctx.fillStyle = '#000000';
-              ctx.font = 'bold 13px Arial';
+              ctx.font = window.innerWidth < 768 ? 'bold 11px Arial' : 'bold 13px Arial';
               ctx.textAlign = 'left';
               ctx.textBaseline = 'middle';
 
-              const taxa = dataset.data[index];
               const item = top10[index];
-              const texto = `${taxa.toFixed(1)}% (${item.resolvidos}/${item.total})`;
+              const texto = `${item.taxa.toFixed(1)}% (${item.resolvidos}/${item.total})`;
               const xPos = element.x + 10;
               const yPos = element.y;
 
@@ -727,20 +779,25 @@ function createResolutividadeChart(canvasId, fieldName) {
     }]
   });
 
+  // Salvar referência
   if (canvasId === 'chartResolutividadeUnidade') chartResolutividadeUnidade = chart;
   if (canvasId === 'chartResolutividadePrestador') chartResolutividadePrestador = chart;
 }
 
 // ===================================
-// GRÁFICO DE BARRAS HORIZONTAIS
+// ✅ GRÁFICO DE BARRAS HORIZONTAIS (RESPONSIVO)
 // ===================================
 function createHorizontalBarChart(canvasId, labels, data, color) {
   const ctx = document.getElementById(canvasId);
   if (!ctx) return;
 
-  if (canvasId === 'chartPendenciasNaoResolvidasUnidade' && chartPendenciasNaoResolvidasUnidade) chartPendenciasNaoResolvidasUnidade.destroy();
+  if (canvasId === 'chartPendenciasNaoResolvidasUnidade' && chartPendenciasNaoResolvidasUnidade) {
+    chartPendenciasNaoResolvidasUnidade.destroy();
+  }
   if (canvasId === 'chartUnidades' && chartUnidades) chartUnidades.destroy();
   if (canvasId === 'chartEspecialidades' && chartEspecialidades) chartEspecialidades.destroy();
+
+  const isMobile = window.innerWidth < 768;
 
   const chart = new Chart(ctx, {
     type: 'bar',
@@ -765,20 +822,24 @@ function createHorizontalBarChart(canvasId, labels, data, color) {
         tooltip: {
           enabled: true,
           backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          titleFont: { size: 14, weight: 'bold' },
-          bodyFont: { size: 13 },
-          padding: 12,
+          titleFont: { size: isMobile ? 12 : 14, weight: 'bold' },
+          bodyFont: { size: isMobile ? 11 : 13 },
+          padding: isMobile ? 8 : 12,
           cornerRadius: 8
         }
       },
       scales: {
         x: { display: false, grid: { display: false } },
         y: {
-          ticks: { font: { size: 12, weight: '500' }, color: '#4a5568', padding: 8 },
+          ticks: { 
+            font: { size: isMobile ? 10 : 12, weight: '500' }, 
+            color: '#4a5568', 
+            padding: isMobile ? 4 : 8 
+          },
           grid: { display: false }
         }
       },
-      layout: { padding: { right: 50 } }
+      layout: { padding: { right: isMobile ? 40 : 50 } }
     },
     plugins: [{
       id: 'customLabels',
@@ -789,11 +850,11 @@ function createHorizontalBarChart(canvasId, labels, data, color) {
           if (!meta.hidden) {
             meta.data.forEach(function (element, index) {
               ctx.fillStyle = '#000000';
-              ctx.font = 'bold 14px Arial';
+              ctx.font = isMobile ? 'bold 11px Arial' : 'bold 14px Arial';
               ctx.textAlign = 'left';
               ctx.textBaseline = 'middle';
               const dataString = dataset.data[index].toString();
-              const xPos = element.x + 10;
+              const xPos = element.x + (isMobile ? 5 : 10);
               const yPos = element.y;
               ctx.fillText(dataString, xPos, yPos);
             });
@@ -809,14 +870,18 @@ function createHorizontalBarChart(canvasId, labels, data, color) {
 }
 
 // ===================================
-// GRÁFICO VERTICAL COM VALOR NO MEIO DA BARRA
+// ✅ GRÁFICO VERTICAL COM VALOR NO MEIO (RESPONSIVO)
 // ===================================
 function createVerticalBarChartCenteredValue(canvasId, labels, data, color) {
   const ctx = document.getElementById(canvasId);
   if (!ctx) return;
 
-  if (canvasId === 'chartPendenciasPrestador' && chartPendenciasPrestador) chartPendenciasPrestador.destroy();
+  if (canvasId === 'chartPendenciasPrestador' && chartPendenciasPrestador) {
+    chartPendenciasPrestador.destroy();
+  }
   if (canvasId === 'chartPendenciasMes' && chartPendenciasMes) chartPendenciasMes.destroy();
+
+  const isMobile = window.innerWidth < 768;
 
   const chart = new Chart(ctx, {
     type: 'bar',
@@ -830,7 +895,7 @@ function createVerticalBarChartCenteredValue(canvasId, labels, data, color) {
         borderRadius: 6,
         barPercentage: 0.70,
         categoryPercentage: 0.75,
-        maxBarThickness: 40
+        maxBarThickness: isMobile ? 30 : 40
       }]
     },
     options: {
@@ -841,20 +906,28 @@ function createVerticalBarChartCenteredValue(canvasId, labels, data, color) {
         tooltip: {
           enabled: true,
           backgroundColor: 'rgba(0,0,0,0.85)',
-          titleFont: { size: 14, weight: 'bold' },
-          bodyFont: { size: 13 },
-          padding: 12,
+          titleFont: { size: isMobile ? 12 : 14, weight: 'bold' },
+          bodyFont: { size: isMobile ? 11 : 13 },
+          padding: isMobile ? 8 : 12,
           cornerRadius: 8
         }
       },
       scales: {
         x: {
-          ticks: { font: { size: 12, weight: '600' }, color: '#4a5568', maxRotation: 45, minRotation: 0 },
+          ticks: { 
+            font: { size: isMobile ? 10 : 12, weight: '600' }, 
+            color: '#4a5568', 
+            maxRotation: 45, 
+            minRotation: isMobile ? 45 : 0 
+          },
           grid: { display: false }
         },
         y: {
           beginAtZero: true,
-          ticks: { font: { size: 12, weight: '600' }, color: '#4a5568' },
+          ticks: { 
+            font: { size: isMobile ? 10 : 12, weight: '600' }, 
+            color: '#4a5568' 
+          },
           grid: { color: 'rgba(0,0,0,0.06)' }
         }
       }
@@ -868,7 +941,7 @@ function createVerticalBarChartCenteredValue(canvasId, labels, data, color) {
 
         ctx.save();
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 14px Arial';
+        ctx.font = isMobile ? 'bold 11px Arial' : 'bold 14px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
@@ -889,13 +962,15 @@ function createVerticalBarChartCenteredValue(canvasId, labels, data, color) {
 }
 
 // ===================================
-// GRÁFICO DE BARRAS VERTICAIS (STATUS)
+// ✅ GRÁFICO DE BARRAS VERTICAIS (STATUS - RESPONSIVO)
 // ===================================
 function createVerticalBarChart(canvasId, labels, data, color) {
   const ctx = document.getElementById(canvasId);
   if (!ctx) return;
 
   if (chartStatus) chartStatus.destroy();
+
+  const isMobile = window.innerWidth < 768;
 
   const chart = new Chart(ctx, {
     type: 'bar',
@@ -909,7 +984,7 @@ function createVerticalBarChart(canvasId, labels, data, color) {
         borderRadius: 6,
         barPercentage: 0.55,
         categoryPercentage: 0.70,
-        maxBarThickness: 28
+        maxBarThickness: isMobile ? 22 : 28
       }]
     },
     options: {
@@ -920,20 +995,28 @@ function createVerticalBarChart(canvasId, labels, data, color) {
         tooltip: {
           enabled: true,
           backgroundColor: 'rgba(0,0,0,0.85)',
-          titleFont: { size: 14, weight: 'bold' },
-          bodyFont: { size: 13 },
-          padding: 12,
+          titleFont: { size: isMobile ? 12 : 14, weight: 'bold' },
+          bodyFont: { size: isMobile ? 11 : 13 },
+          padding: isMobile ? 8 : 12,
           cornerRadius: 8
         }
       },
       scales: {
         x: {
-          ticks: { font: { size: 12, weight: '600' }, color: '#4a5568', maxRotation: 45, minRotation: 0 },
+          ticks: { 
+            font: { size: isMobile ? 10 : 12, weight: '600' }, 
+            color: '#4a5568', 
+            maxRotation: 45, 
+            minRotation: isMobile ? 45 : 0 
+          },
           grid: { display: false }
         },
         y: {
           beginAtZero: true,
-          ticks: { font: { size: 12, weight: '600' }, color: '#4a5568' },
+          ticks: { 
+            font: { size: isMobile ? 10 : 12, weight: '600' }, 
+            color: '#4a5568' 
+          },
           grid: { color: 'rgba(0,0,0,0.06)' }
         }
       }
@@ -947,7 +1030,7 @@ function createVerticalBarChart(canvasId, labels, data, color) {
 
         ctx.save();
         ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 16px Arial';
+        ctx.font = isMobile ? 'bold 13px Arial' : 'bold 16px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
@@ -966,7 +1049,7 @@ function createVerticalBarChart(canvasId, labels, data, color) {
 }
 
 // ===================================
-// GRÁFICO DE PIZZA
+// ✅ GRÁFICO DE PIZZA (RESPONSIVO)
 // ===================================
 function createPieChart(canvasId, labels, data) {
   const ctx = document.getElementById(canvasId);
@@ -980,6 +1063,7 @@ function createPieChart(canvasId, labels, data) {
   ];
 
   const total = data.reduce((sum, val) => sum + val, 0);
+  const isMobile = window.innerWidth < 768;
 
   chartPizzaStatus = new Chart(ctx, {
     type: 'pie',
@@ -998,15 +1082,19 @@ function createPieChart(canvasId, labels, data) {
       plugins: {
         legend: {
           display: true,
-          position: 'right',
+          position: isMobile ? 'bottom' : 'right',
           labels: {
-            font: { size: 14, weight: 'bold', family: 'Arial, sans-serif' },
+            font: { 
+              size: isMobile ? 11 : 14, 
+              weight: 'bold', 
+              family: 'Arial, sans-serif' 
+            },
             color: '#000000',
-            padding: 15,
+            padding: isMobile ? 8 : 15,
             usePointStyle: true,
             pointStyle: 'circle',
-            boxWidth: 20,
-            boxHeight: 20,
+            boxWidth: isMobile ? 15 : 20,
+            boxHeight: isMobile ? 15 : 20,
             generateLabels: function (chart) {
               const datasets = chart.data.datasets;
               const labels = chart.data.labels;
@@ -1030,9 +1118,9 @@ function createPieChart(canvasId, labels, data) {
         tooltip: {
           enabled: true,
           backgroundColor: 'rgba(0, 0, 0, 0.8)',
-          titleFont: { size: 14, weight: 'bold' },
-          bodyFont: { size: 13 },
-          padding: 12,
+          titleFont: { size: isMobile ? 12 : 14, weight: 'bold' },
+          bodyFont: { size: isMobile ? 11 : 13 },
+          padding: isMobile ? 8 : 12,
           cornerRadius: 8,
           callbacks: {
             label: function (context) {
@@ -1052,7 +1140,7 @@ function createPieChart(canvasId, labels, data) {
         const meta = chart.getDatasetMeta(0);
 
         ctx.save();
-        ctx.font = 'bold 14px Arial';
+        ctx.font = isMobile ? 'bold 11px Arial' : 'bold 14px Arial';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
@@ -1252,5 +1340,3 @@ function downloadExcel() {
   const hoje = new Date().toISOString().split('T')[0];
   XLSX.writeFile(wb, `Dados_Eldorado_${hoje}.xlsx`);
 }
-
-
