@@ -7,21 +7,21 @@ function gvizCsvUrl(sheetId, gid) {
 }
 
 // ===================================
-// CONFIGURAÇÃO DA PLANILHA (DUAS ABAS)
+// ✅ CONFIGURAÇÃO DA PLANILHA (NOVAS ABAS VARGEM DAS FLORES)
 // ===================================
-const SHEET_ID = '1r6NLcVkVLD5vp4UxPEa7TcreBpOd0qeNt-QREOG4Xr4';
+const SHEET_ID = '1IHknmxe3xAnfy5Bju_23B5ivIL-qMaaE6q_HuPaLBpk';
 
 const SHEETS = [
   {
-    name: 'PENDÊNCIAS ELDORADO',
+    name: 'PENDÊNCIAS VARGEM DAS FLORES',
     url: gvizCsvUrl(SHEET_ID, '278071504'),
-    distrito: 'ELDORADO',
+    distrito: 'VARGEM DAS FLORES',
     tipo: 'PENDENTE'
   },
   {
-    name: 'RESOLVIDOS ELDORADO',
-    url: gvizCsvUrl(SHEET_ID, '2142054254'),
-    distrito: 'ELDORADO',
+    name: 'RESOLVIDOS VARGEM DAS FLORES',
+    url: gvizCsvUrl(SHEET_ID, '451254610'),
+    distrito: 'VARGEM DAS FLORES',
     tipo: 'RESOLVIDO'
   }
 ];
@@ -1250,6 +1250,7 @@ function downloadExcel() {
   ];
 
   const hoje = new Date().toISOString().split('T')[0];
-  XLSX.writeFile(wb, `Dados_Eldorado_${hoje}.xlsx`);
+  XLSX.writeFile(wb, `Dados_Vargem das Flores_${hoje}.xlsx`);
 }
+
 
