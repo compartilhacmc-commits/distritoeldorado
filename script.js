@@ -1,12 +1,14 @@
 // ===================================
-// FUNÇÃO: URL CSV (Google Sheets gviz) - SEM CACHE BUSTING
+// FUNÇÃO: URL CSV (Google Sheets gviz) + ANTI-CACHE
 // ===================================
 function gvizCsvUrl(sheetId, gid) {
-  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}`;
+  const cacheBust = Date.now();
+  return `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:csv&gid=${gid}&_=${cacheBust}`;
 }
 
 // ===================================
 // CONFIGURAÇÃO DA PLANILHA (DUAS ABAS)
+// NOVOS LINKS DO DISTRITO ELDORADO
 // ===================================
 const SHEET_ID = '1_74uHFBFFZOM9klydEEEgCahFI3rVeQDXjZxgGsioTo';
 
